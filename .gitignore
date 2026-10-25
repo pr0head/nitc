@@ -1,0 +1,27 @@
+# Secrets / credentials — NEVER commit
+login.json
+*.token
+*.tokens.json
+.tokens.json
+.secrets/
+.env
+.env.*
+secrets/
+
+# Dependencies
+node_modules/
+
+# Build output (uncomment if dist is generated, not committed)
+# dist/
+
+# Logs / temp
+*.log
+tmp/
+.cache/
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.swp
