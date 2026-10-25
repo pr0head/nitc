@@ -1,0 +1,80 @@
+/* ---- list modal (favorites, plans) ------------------------------------- */
+.lm {
+  position: fixed; inset: 0; z-index: 1400; background: #000a;
+  display: flex; align-items: center; justify-content: center; padding: 16px;
+}
+.lm[hidden] { display: none !important; }
+.lm-box {
+  width: 340px; max-width: 100%; max-height: min(70vh, 560px);
+  display: flex; flex-direction: column; overflow: hidden;
+  background: var(--panel-bg); border: 1px solid var(--line); border-radius: 10px;
+  box-shadow: 0 6px 26px #000a; font-size: 13px; color: var(--text);
+}
+.lm-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 9px 11px; border-bottom: 1px solid var(--line);
+}
+.lm-h { font-weight: 700; font-size: 14px; }
+.lm-close { background: none; border: 0; color: var(--muted); font-size: 20px; line-height: 1; cursor: pointer; padding: 0 2px; }
+.lm-close:hover { color: #fff; }
+.lm-list { overflow: auto; padding: 6px; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+
+.lm-item { display: flex; align-items: center; border-radius: 6px; }
+.lm-item:hover { background: var(--hover); }
+.lm-item.on { background: var(--accent-bg); box-shadow: inset 2px 0 0 var(--accent); }
+.lm-row {
+  flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; text-align: left;
+  background: none; border: 0; border-radius: 6px; padding: 8px 9px;
+  color: var(--text); font: 13px var(--font); cursor: pointer;
+}
+.lm-row.loading { opacity: 0.5; cursor: default; }
+.lm-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.lm-item.on .lm-name { color: var(--accent); }
+.lm-meta { font-size: 11px; color: var(--dim); }
+.lm-input {
+  flex: 1; min-width: 0; margin: 4px 6px; padding: 6px 7px; background: var(--input);
+  border: 1px solid var(--accent-dim); border-radius: 6px; color: var(--text); font: 13px var(--font);
+}
+.lm-ren, .lm-del {
+  flex: none; display: flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; background: none; border: 0; border-radius: 6px; color: var(--dim); cursor: pointer;
+}
+.lm-del { margin-right: 3px; }
+.lm-ren:hover { background: #1b2a3a; color: #9ec8ff; }
+.lm-del:hover { background: #2a1416; color: #ff9aa5; }
+.lm-empty { padding: 14px 12px; color: var(--muted); line-height: 1.5; }
+.lm-hint { display: inline-flex; vertical-align: -2px; color: #ffd24a; }
+
+/* ---- dialog (confirm / prompt / alert) --------------------------------- */
+.dlg {
+  position: fixed; inset: 0; z-index: 1500; background: #000a;
+  display: flex; align-items: center; justify-content: center; padding: 16px;
+}
+.dlg-box {
+  width: 300px; max-width: 100%; background: var(--panel); border: 1px solid var(--line);
+  border-radius: 10px; padding: 14px; box-shadow: 0 6px 26px #000a; font-size: 13px;
+}
+.dlg-msg { color: var(--text); line-height: 1.45; margin-bottom: 12px; }
+.dlg-field {
+  width: 100%; margin-bottom: 12px; padding: 7px 8px; background: var(--input);
+  border: 1px solid var(--line); border-radius: 6px; color: var(--text); font: 13px var(--font);
+}
+.dlg-field:focus { outline: none; border-color: var(--accent-dim); }
+.dlg-btns { display: flex; justify-content: flex-end; gap: 8px; }
+.dlg-ok {
+  padding: 6px 18px; background: var(--accent); border: 0; border-radius: 6px;
+  color: #06120f; font: 600 13px var(--font); cursor: pointer;
+}
+.dlg-ok:hover { filter: brightness(1.08); }
+.dlg-cancel {
+  padding: 6px 14px; background: none; border: 1px solid var(--line); border-radius: 6px;
+  color: var(--muted); font: 13px var(--font); cursor: pointer;
+}
+.dlg-cancel:hover { color: var(--text); }
+
+@media (pointer: coarse) {
+  .lm-row { padding: 11px 9px; }
+  .lm-ren, .lm-del { width: 38px; height: 38px; }
+  .dlg-ok { padding: 10px 20px; }
+  .dlg-cancel { padding: 10px 16px; }
+}

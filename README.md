@@ -25,17 +25,27 @@
 
 Ранняя разработка. Контракт API зафиксирован на 25.10.2026 (`/v1`, `schema: 1`).
 
-## Доступ и CORS
-
-Для веб-карты на собственном домене доступ к API из браузера нужно **согласовать с
-владельцем Netgress** — точный `Origin` добавляется в серверный список разрешений.
-См. раздел «Подключение и доступ из браузера» в [docs/NETGRESS_MAP_API.md](docs/NETGRESS_MAP_API.md).
-
 ## Документация
 
 - [docs/NETGRESS_MAP_API.md](docs/NETGRESS_MAP_API.md) — официальный контракт API.
 - [docs/architecture.md](docs/architecture.md) — архитектура клиента.
+- [docs/feature-backlog.md](docs/feature-backlog.md) — фичи на данных, которые API уже отдаёт.
+- [docs/future-ideas.md](docs/future-ideas.md) — фичи, ожидающие расширения API.
 
 ## Разработка
+
+Стек: Vite + vanilla JS, движок карты — Leaflet.
+
+```bash
+npm install
+npm run dev      # http://localhost:5173 (HMR)
+npm run build    # статика в dist/
+npm run preview  # проверка сборки
+```
+
+Локальная разработка работает: дев-сервер проксирует запросы к API
+server-side, обходя CORS-ограничение Netgress. Для публичной сборки нужен
+разрешённый origin — см. [docs/architecture.md](docs/architecture.md), раздел
+«CORS и как его обходим».
 
 Инструкции для AI-агентов и участников — в [AGENTS.md](AGENTS.md) / [CLAUDE.md](CLAUDE.md).

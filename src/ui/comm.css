@@ -1,0 +1,52 @@
+/* COMM, docked bottom-left: compact (3 rows) or expanded (scrolling list). */
+.comm {
+  position: absolute; left: 10px; bottom: 10px; z-index: 1000;
+  width: 400px; max-width: calc(100vw - 20px);
+  background: var(--panel-bg); border: 1px solid var(--line); border-radius: 10px;
+  box-shadow: 0 4px 20px #0007; font-size: 12px;
+}
+.comm--open { width: 460px; }
+.comm-head { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+.comm-title { font-weight: 700; letter-spacing: 0.08em; color: var(--accent); margin-right: auto; }
+.comm-kind {
+  background: var(--input); color: var(--text); border: 1px solid var(--line); border-radius: 6px;
+  padding: 2px 4px; font-size: 12px; outline: none; cursor: pointer;
+}
+.comm-fac, .comm-toggle {
+  display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; padding: 0;
+  background: none; border: 1px solid var(--line); border-radius: 6px; color: var(--muted); cursor: pointer;
+}
+.comm-fac span { width: 10px; height: 10px; border-radius: 50%; border: 1px solid #000; }
+.comm-fac.off span { opacity: 0.2; }
+.comm-toggle:hover, .comm-fac:hover { color: var(--accent); border-color: var(--accent-dim); }
+
+.comm-list { padding: 3px 0; }
+.comm--open .comm-list {
+  max-height: 50vh; overflow: auto;
+  scrollbar-width: thin; scrollbar-color: var(--line) transparent;
+}
+.comm-row { display: flex; gap: 6px; align-items: baseline; padding: 2px 8px; white-space: nowrap; line-height: 1.5; }
+.comm-row:hover { background: var(--hover); }
+.comm-time { color: var(--dim); flex: none; font-variant-numeric: tabular-nums; }
+.comm-nick { font-weight: 600; flex: none; max-width: 120px; overflow: hidden; text-overflow: ellipsis; }
+.comm-msg { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
+.comm-p { color: var(--accent); text-decoration: none; }
+.comm-p:hover { text-decoration: underline; }
+.comm-mu { color: #ffd24a; }
+.comm-dim { color: var(--dim); }
+
+.comm-foot { padding: 4px 8px 6px; color: var(--dim); text-align: center; }
+.comm-foot[hidden] { display: none; }
+.comm-err { color: #ffb86b; }
+.comm-more { background: none; border: 0; color: var(--accent); cursor: pointer; font: 12px var(--font); padding: 0; }
+
+@media (pointer: coarse) {
+  .comm-fac, .comm-toggle { width: 34px; height: 34px; }
+  .comm-kind { padding: 6px; }
+  .comm-row { padding: 6px 8px; }
+}
+/* phones: the feed spans the width, so the bottom-right controls sit above it */
+@media (max-width: 560px) {
+  .comm, .comm--open { width: auto; right: 10px; }
+  .leaflet-bottom.leaflet-right { bottom: calc(var(--comm-h, 0px) + 10px); }
+}

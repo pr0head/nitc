@@ -1,0 +1,165 @@
+:root {
+  --bg: #0b0d0d;
+  --panel: #14191a;
+  --line: #243031;
+  --text: #e7eceb;
+  --muted: #8b9a98;
+  --accent: #5fe3c4; /* from the logo */
+  --accent-dim: #3fae95;
+  --danger: #ff6b6b;
+  --panel-bg: rgba(16, 21, 22, 0.96); /* floating panels over the map */
+  --dim: #5f6e6c;     /* tertiary text, empty values */
+  --hover: #1a2324;
+  --input: #0b0f10;
+  --accent-bg: #123a32; /* active/selected rows and tools */
+  --font: -apple-system, system-ui, "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+* { box-sizing: border-box; }
+html, body, #app { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--text); font-family: var(--font); }
+
+/* ---- login ------------------------------------------------------------- */
+.login {
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    radial-gradient(70% 60% at 50% 32%, #10201d 0%, var(--bg) 70%);
+}
+.login__card {
+  width: 100%;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  text-align: center;
+}
+.login__logo { align-self: center; border-radius: 16px; }
+.login__title {
+  margin: 2px 0 0;
+  font-size: 26px;
+  letter-spacing: 4px;
+  font-weight: 600;
+}
+.login__sub { margin: 0 0 6px; color: var(--muted); font-size: 13px; line-height: 1.4; }
+.login__field { display: flex; flex-direction: column; gap: 5px; text-align: left; }
+.login__field span { font-size: 12px; color: var(--muted); }
+.login__field input {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--text);
+  font-size: 15px;
+  padding: 11px 12px;
+  outline: none;
+}
+.login__field input:focus { border-color: var(--accent-dim); }
+.login__btn {
+  margin-top: 4px;
+  background: var(--accent);
+  color: #06120f;
+  border: 0;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  padding: 12px;
+  cursor: pointer;
+}
+.login__btn:disabled { opacity: 0.6; cursor: default; }
+.login__err { margin: 2px 0 0; color: var(--danger); font-size: 13px; min-height: 1em; }
+
+/* ---- app / map --------------------------------------------------------- */
+.app { height: 100%; position: relative; }
+.map { position: absolute; inset: 0; background: var(--bg); }
+
+/* floating panel shared look */
+.who, .mstat {
+  background: rgba(16, 21, 22, 0.92);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 4px 20px #0007;
+}
+
+/* top-left identity plate */
+.who {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px 6px 12px;
+  max-width: 60vw;
+}
+.who__brand { font-weight: 600; letter-spacing: 2px; color: var(--accent); font-size: 13px; }
+.who__me { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.who__logout {
+  display: flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; flex: none;
+  background: none; border: 0; border-radius: 7px; color: var(--muted); cursor: pointer;
+}
+.who__logout:hover { background: #2a1416; color: #ff9aa5; }
+
+/* bottom-right map status (a Leaflet control between zoom and attribution) */
+.mstat {
+  padding: 5px 9px;
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: nowrap;
+}
+.mstat-row { display: flex; justify-content: space-between; gap: 12px; }
+.mstat-k { color: var(--muted); }
+.mstat-v { color: var(--text); text-align: right; }
+.mstat-warn { color: #ffb86b; }
+
+/* top-right vertical toolbar */
+.toolbar { position: absolute; top: 10px; right: 10px; z-index: 1000; display: flex; flex-direction: column; gap: 6px; }
+.tb-item { position: relative; }
+.tb-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 38px; height: 38px;
+  background: rgba(16, 21, 22, 0.92);
+  border: 1px solid var(--line); border-radius: 8px;
+  color: var(--text); cursor: pointer; box-shadow: 0 4px 20px #0007;
+}
+.tb-btn:hover { border-color: var(--accent-dim); color: var(--accent); }
+/* panel opens to the LEFT of the button */
+.tb-panel {
+  position: absolute; top: 0; right: 44px;
+  background: rgba(16, 21, 22, 0.96);
+  border: 1px solid var(--line); border-radius: 10px;
+  padding: 12px 14px;
+  max-height: 70vh; overflow: auto;
+  box-shadow: 0 4px 20px #0008;
+}
+/* author display:flex would otherwise beat [hidden]; force it hidden */
+.tb-panel[hidden] { display: none !important; }
+.tb-layers { display: flex; gap: 18px; }
+.tb-col { min-width: 172px; }
+.tb-col-h { font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); margin-bottom: 6px; }
+.tb-row { display: flex; align-items: center; gap: 7px; font-size: 13px; padding: 3px 0; cursor: pointer; }
+.tb-row input { accent-color: var(--accent); }
+.tb-sw { display: inline-block; width: 10px; height: 10px; border-radius: 50%; border: 1px solid #000; flex: none; }
+.tb-sep { height: 1px; background: var(--line); margin: 7px 0; }
+.tb-sel { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; padding: 3px 0; }
+.tb-sel-l { display: flex; align-items: center; }
+.tb-sel select {
+  background: var(--panel); color: var(--text);
+  border: 1px solid var(--line); border-radius: 7px;
+  padding: 3px 6px; font-size: 12px; cursor: pointer; outline: none;
+}
+.tb-sel select:focus { border-color: var(--accent-dim); }
+
+@media (pointer: coarse) {
+  .who__logout { width: 36px; height: 36px; }
+  .tb-btn { width: 44px; height: 44px; }
+  .tb-panel { right: 50px; max-width: calc(100vw - 70px); }
+  .tb-row { padding: 7px 0; }
+}
+@media (max-width: 560px) {
+  .tb-layers { flex-direction: column; gap: 10px; }
+  .tb-col { min-width: 0; }
+}

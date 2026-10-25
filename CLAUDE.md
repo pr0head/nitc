@@ -9,6 +9,19 @@ It renders portals, directional links, fields, portal cards and the COMM activit
 log from the official **read-only** Map API. We draw on the community's long
 experience with IITC-style intel maps, but build fresh, from scratch.
 
+## Game model: classic Ingress (pre-Prime)
+Netgress deliberately recreates **the original Ingress experience, as it was before
+Prime**. Items, actions, XP, limits and every other mechanic are kept 100% faithful
+to that original game. Practical consequences for us:
+- Use classic-era rules as the reference when interpreting data (resonator levels,
+  mod types/stats, portal levels, energy, MU, link/field mechanics).
+- If something is missing or behaves differently from the classic original, treat it
+  as **a likely bug, not a new feature** — note it and raise it, don't design around
+  it as if it were intended. Our map reflects the game faithfully; it does not invent
+  mechanics or "improve" the rules.
+- This is about *mechanics fidelity*. It does not constrain our UI/UX, which we are
+  free to modernize and rethink.
+
 ## Non-negotiable rules
 1. **Scope is read-only.** Never add game actions (move, deploy, mods, links,
    attack, inventory, keys). The API forbids it; so do we.
@@ -36,6 +49,11 @@ experience with IITC-style intel maps, but build fresh, from scratch.
 - bbox order is **west,south,east,north**; `position:{latitude,longitude}` (no E6).
 - faction: `blue | green | neutral`. UUIDs are opaque keys, not coordinates.
 - Full, authoritative details: **`docs/NETGRESS_MAP_API.md`** — read it before touching API code.
+
+## Stack (settled)
+Vite + vanilla JS (no heavy framework), map engine **Leaflet**. `npm run dev`
+(proxy at `/api` dodges CORS server-side), `npm run build` → static `dist/` for
+GitHub Pages (base `/nitc/`). CORS/prod-origin details in `docs/architecture.md`.
 
 ## Architecture (target)
 Thin layers, framework-light, so the map engine and UI stay swappable.

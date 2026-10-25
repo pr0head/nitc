@@ -11,8 +11,9 @@ secrets/
 # Dependencies
 node_modules/
 
-# Build output (uncomment if dist is generated, not committed)
-# dist/
+# Build output (static site — generated, not committed)
+dist/
+.vite/
 
 # Logs / temp
 *.log
