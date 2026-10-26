@@ -163,3 +163,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--font); }
   .tb-layers { flex-direction: column; gap: 10px; }
   .tb-col { min-width: 0; }
 }
+
+/* "my location" button (Leaflet bar, above zoom) */
+.nitc-locate { display: flex !important; align-items: center; justify-content: center; color: #333; }
+.nitc-locate.on { color: #1a73e8; }

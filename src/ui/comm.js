@@ -1,7 +1,11 @@
 // COMM: the activity log of the visible area, docked bottom-left.
-//   compact  — filter + the 3 latest events
-//   expanded — a scrolling list; older pages load as you scroll (until the
-//              server has no more), new events arrive on top
+// Chat order: oldest at the top, newest at the bottom.
+//   compact  — filter + the 3 latest events, fixed height
+//   expanded — from the card's top edge down to the bottom, a scrolling list;
+//              scrolling up loads older pages (until the server has no more),
+//              new events arrive at the bottom
+// The box never resizes with its content: a new area clears the list and
+// shows the state line in the same space.
 //
 // Paging, per the API contract:
 //   first page (no cursor) → up to 50 newest, newest→oldest
@@ -67,22 +71,17 @@ export function mountComm(container, engine) {
       `<button type="button" class="comm-fac" data-f="enl" title="${FACTION.enl.name}"><span style="background:${FACTION.enl.color}"></span></button>` +
       '<button type="button" class="comm-toggle"></button>' +
     '</div>' +
-    '<div class="comm-list"></div>' +
-    '<div class="comm-foot"></div>';
+    '<div class="comm-list"></div>';
   container.append(el);
   L.DomEvent.disableClickPropagation(el);
   L.DomEvent.disableScrollPropagation(el);
   const listEl = el.querySelector('.comm-list');
-  const footEl = el.querySelector('.comm-foot');
   const toggleBtn = el.querySelector('.comm-toggle');
 
-  // Live heights for the layout: on phones the bottom-right controls sit above
-  // the feed (--comm-h); the portal card keeps clear of the COMPACT feed only
-  // (--comm-compact-h) and lies over an expanded one.
+  // The compact height for the layout: the portal card keeps clear of it (and
+  // lies over an expanded feed); on phones the bottom-right controls sit above it.
   new ResizeObserver(() => {
-    const css = document.documentElement.style;
-    css.setProperty('--comm-h', el.offsetHeight + 'px');
-    if (!st.open) css.setProperty('--comm-compact-h', el.offsetHeight + 'px');
+    if (!st.open) document.documentElement.style.setProperty('--comm-compact-h', el.offsetHeight + 'px');
   }).observe(el);
 
   // ---- feed state ----
@@ -137,13 +136,13 @@ export function mountComm(container, engine) {
   async function older() {
     if (!next || loading || loadingOlder) return;
     const my = gen;
-    loadingOlder = true; paintFoot();
+    loadingOlder = true; paint('older');
     try {
       const r = await getActivity(bbox, { cursor: next }, ctrl.signal);
       if (my !== gen) return;
       add(r.items); next = r.next || ''; err = '';
     } catch (e) { fail(e, my); } finally {
-      if (my === gen) { loadingOlder = false; paint(); }
+      if (my === gen) { loadingOlder = false; paint('older'); }
     }
   }
 
@@ -225,56 +224,64 @@ export function mountComm(container, engine) {
     return `${fmtTime(ev.time)} ${ev.nick}: ${KIND_LABEL[ev.kind] || ev.kind} ${names}${m}`;
   }
 
-  function paint() {
+  const note = (html, cls = '') => `<div class="comm-note ${cls}">${html}</div>`;
+
+  // State line: alone in an empty list, or above the rows (expanded: older
+  // pages; any mode: an error that kept the old rows).
+  function stateLine(hasRows) {
+    if (loading) return note('загрузка…');
+    if (err) return note(esc(err), 'comm-err');
+    if (!hasRows) return note(items.length ? 'нет событий под фильтр' : 'событий в этой области нет');
+    if (!st.open) return '';
+    if (loadingOlder) return note('загрузка старых…');
+    if (next) return note('<button type="button" class="comm-more">загрузить ещё</button>');
+    return note('больше событий нет');
+  }
+
+  // anchor: 'end' — jump to the newest; 'older' — rows were added above, keep
+  // the view where it was; default — stay at the bottom if already there,
+  // otherwise keep the scroll position.
+  function paint(anchor) {
     el.classList.toggle('comm--open', st.open);
     toggleBtn.innerHTML = st.open ? COLLAPSE : EXPAND;
     toggleBtn.title = st.open ? 'Свернуть' : 'Развернуть';
     el.querySelectorAll('.comm-fac').forEach((b) => b.classList.toggle('off', !st[b.dataset.f]));
 
-    let rows = visible();
-    if (!st.open) rows = rows.slice(0, COMPACT_ROWS);
-    listEl.innerHTML = rows.map((ev) =>
+    const { scrollTop, scrollHeight, clientHeight } = listEl;
+    const atEnd = scrollHeight - scrollTop - clientHeight < 30;
+
+    let rows = visible(); // newest first
+    const line = stateLine(rows.length > 0);
+    if (!st.open) rows = rows.slice(0, line ? COMPACT_ROWS - 1 : COMPACT_ROWS);
+    listEl.innerHTML = line + rows.reverse().map((ev) =>
       `<div class="comm-row" data-id="${esc(ev.id)}" title="${esc(plain(ev))}">` +
       `<span class="comm-time">${fmtTime(ev.time)}</span>` +
       `<span class="comm-nick" style="color:${fcol(ev.faction)}">${esc(ev.nick)}</span>` +
       `<span class="comm-msg">${message(ev)}</span></div>`).join('');
-    paintFoot();
-  }
 
-  function paintFoot() {
-    let html = '';
-    if (loading) html = 'загрузка…';
-    else if (err) html = `<span class="comm-err">${esc(err)}</span>`;
-    else if (!items.length) html = 'событий в этой области нет';
-    else if (!visible().length) html = 'нет событий под фильтр';
-    if (st.open && !loading && !err && items.length) {
-      if (loadingOlder) html = 'загрузка старых…';
-      else if (next) html = '<button type="button" class="comm-more">загрузить ещё</button>';
-      else html = html || 'больше событий нет';
-    }
-    footEl.innerHTML = html;
-    footEl.hidden = !html;
+    if (anchor === 'end' || atEnd) listEl.scrollTop = listEl.scrollHeight;
+    else if (anchor === 'older') listEl.scrollTop = listEl.scrollHeight - (scrollHeight - scrollTop);
+    else listEl.scrollTop = scrollTop;
   }
 
   // ---- controls ----
   el.querySelector('.comm-kind').addEventListener('change', (e) => {
-    st.kind = e.target.value; prefs.save(); paint();
+    st.kind = e.target.value; prefs.save(); paint('end');
   });
   el.querySelectorAll('.comm-fac').forEach((b) => b.addEventListener('click', () => {
-    st[b.dataset.f] = !st[b.dataset.f]; prefs.save(); paint();
+    st[b.dataset.f] = !st[b.dataset.f]; prefs.save(); paint('end');
   }));
   toggleBtn.addEventListener('click', () => {
-    st.open = !st.open; prefs.save(); paint();
-    listEl.scrollTop = 0;
+    st.open = !st.open; prefs.save(); paint('end');
   });
-  footEl.addEventListener('click', (e) => { if (e.target.closest('.comm-more')) older(); });
-  // expanded: reaching the bottom loads the next older page
+  // expanded: reaching the top loads the next older page
   listEl.addEventListener('scroll', () => {
-    if (st.open && listEl.scrollTop + listEl.clientHeight > listEl.scrollHeight - 80) older();
+    if (st.open && listEl.scrollTop < 80) older();
   });
 
   // portal name → centre on it (zoomed in enough to show portals) + its card
   listEl.addEventListener('click', (e) => {
+    if (e.target.closest('.comm-more')) { older(); return; }
     const a = e.target.closest('.comm-p');
     if (a) {
       e.preventDefault();

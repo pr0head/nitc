@@ -1,11 +1,15 @@
-/* COMM, docked bottom-left: compact (3 rows) or expanded (scrolling list). */
+/* COMM, docked bottom-left: compact (3 rows) or expanded (scrolling list).
+   Fixed size in both modes — content never resizes the box. */
 .comm {
+  --row: 22px;
   position: absolute; left: 10px; bottom: 10px; z-index: 1000;
+  display: flex; flex-direction: column;
   width: 400px; max-width: calc(100vw - 20px);
   background: var(--panel-bg); border: 1px solid var(--line); border-radius: 10px;
   box-shadow: 0 4px 20px #0007; font-size: 12px;
 }
-.comm--open { width: 460px; }
+/* expanded: from the portal card's top edge (under the identity plate) down */
+.comm--open { width: 460px; top: 62px; }
 .comm-head { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-bottom: 1px solid var(--line); }
 .comm-title { font-weight: 700; letter-spacing: 0.08em; color: var(--accent); margin-right: auto; }
 .comm-kind {
@@ -20,12 +24,17 @@
 .comm-fac.off span { opacity: 0.2; }
 .comm-toggle:hover, .comm-fac:hover { color: var(--accent); border-color: var(--accent-dim); }
 
-.comm-list { padding: 3px 0; }
+/* rows sit at the bottom, newest last (auto margin keeps the list scrollable) */
+.comm-list { display: flex; flex-direction: column; padding: 3px 0; height: calc(var(--row) * 3); overflow: hidden; }
+.comm-list > :first-child { margin-top: auto; }
 .comm--open .comm-list {
-  max-height: 50vh; overflow: auto;
+  flex: 1 1 auto; height: auto; min-height: 0; overflow: auto;
   scrollbar-width: thin; scrollbar-color: var(--line) transparent;
 }
-.comm-row { display: flex; gap: 6px; align-items: baseline; padding: 2px 8px; white-space: nowrap; line-height: 1.5; }
+.comm-row {
+  display: flex; gap: 6px; align-items: baseline; flex: none;
+  height: var(--row); line-height: var(--row); padding: 0 8px; white-space: nowrap;
+}
 .comm-row:hover { background: var(--hover); }
 .comm-time { color: var(--dim); flex: none; font-variant-numeric: tabular-nums; }
 .comm-nick { font-weight: 600; flex: none; max-width: 120px; overflow: hidden; text-overflow: ellipsis; }
@@ -35,18 +44,21 @@
 .comm-mu { color: #ffd24a; }
 .comm-dim { color: var(--dim); }
 
-.comm-foot { padding: 4px 8px 6px; color: var(--dim); text-align: center; }
-.comm-foot[hidden] { display: none; }
+.comm-note {
+  flex: none; height: var(--row); line-height: var(--row); padding: 0 8px; color: var(--dim);
+  text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 .comm-err { color: #ffb86b; }
 .comm-more { background: none; border: 0; color: var(--accent); cursor: pointer; font: 12px var(--font); padding: 0; }
 
 @media (pointer: coarse) {
+  .comm { --row: 30px; }
   .comm-fac, .comm-toggle { width: 34px; height: 34px; }
   .comm-kind { padding: 6px; }
-  .comm-row { padding: 6px 8px; }
 }
-/* phones: the feed spans the width, so the bottom-right controls sit above it */
+/* phones: the feed spans the width, so the bottom-right controls sit above
+   the compact feed (an expanded one covers them) */
 @media (max-width: 560px) {
   .comm, .comm--open { width: auto; right: 10px; }
-  .leaflet-bottom.leaflet-right { bottom: calc(var(--comm-h, 0px) + 10px); }
+  .leaflet-bottom.leaflet-right { bottom: calc(var(--comm-compact-h, 0px) + 10px); }
 }
