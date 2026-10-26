@@ -3,10 +3,12 @@
 // (first visit), one centring at startup unless the user moves the map first.
 // The position stays in the page: it is never sent anywhere.
 import L from 'leaflet';
+import { MAP } from '../config.js';
 
 const ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/></svg>';
 const COLOR = '#4da3ff';
 const OPTS = { enableHighAccuracy: true, maximumAge: 30000, timeout: 15000 };
+const BUTTON_ZOOM = MAP.minPortalZoom; // the button shows the portals around you
 
 export function mountLocate(engine, { centerOnStart = true } = {}) {
   const map = engine.map;
@@ -20,8 +22,9 @@ export function mountLocate(engine, { centerOnStart = true } = {}) {
   const dot = L.circleMarker([0, 0], { radius: 6, color: '#fff', weight: 2, fillColor: COLOR, fillOpacity: 1, ...ov });
 
   let pos = null;              // last fix: [lat, lng]
-  let pendingCenter = centerOnStart;
-  map.on('dragstart', () => { pendingCenter = false; }); // the user took over
+  // centre on the next fix: 'start' keeps the zoom, 'button' zooms in
+  let pending = centerOnStart ? 'start' : null;
+  map.on('dragstart', () => { pending = null; }); // the user took over
 
   const ctl = L.control({ position: 'bottomright' });
   let btn;
@@ -32,8 +35,8 @@ export function mountLocate(engine, { centerOnStart = true } = {}) {
     L.DomEvent.disableClickPropagation(bar);
     L.DomEvent.on(btn, 'click', (e) => {
       L.DomEvent.preventDefault(e);
-      if (pos) map.setView(pos, map.getZoom());
-      else { pendingCenter = true; watch(); }
+      if (pos) map.setView(pos, BUTTON_ZOOM);
+      else { pending = 'button'; watch(); }
     });
     return bar;
   };
@@ -45,10 +48,10 @@ export function mountLocate(engine, { centerOnStart = true } = {}) {
     dot.setLatLng(pos);
     if (!map.hasLayer(dot)) { acc.addTo(map); dot.addTo(map); }
     btn.classList.add('on'); btn.title = 'Моё местоположение';
-    if (pendingCenter) { pendingCenter = false; map.setView(pos, map.getZoom()); }
+    if (pending) { map.setView(pos, pending === 'button' ? BUTTON_ZOOM : map.getZoom()); pending = null; }
   }
   function onError(e) {
-    pendingCenter = false;
+    pending = null;
     if (e.code === e.PERMISSION_DENIED) {
       stop();
       btn.classList.remove('on');
