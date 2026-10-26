@@ -1,6 +1,7 @@
 // Map status, bottom-right: what the map is showing right now and whether the
 // last load finished. One row per layer, from the server's own LOD metadata:
-//   порталы  N            | скрыты — приблизьте (zoom < 15: links-only LOD)
+//   порталы  N            | только с линками · N (zoom < 15: links-only LOD,
+//                           the dots are link/field ends)
 //   линки    N · все      | N · > 300 м (shorter links dropped at this zoom)
 //   поля     N
 //   карта    готово · z17 | загрузка… | ошибка … | лимит запросов
@@ -26,7 +27,7 @@ export function createMapStatus() {
       const c = last.counts;
       const minLen = last.lod?.min_link_length_m || 0;
       html += last.portalsOmitted || last.lod?.has_portals === false
-        ? row('порталы', 'скрыты — приблизьте')
+        ? row('порталы', `только с линками · ${c.corners || 0}`)
         : row('порталы', c.portals + cut('portals'), t.portals);
       html += row('линки', `${c.links} · ${minLen > 0 ? '&gt; ' + fmtLen(minLen) : 'все'}${cut('links')}`, t.links);
       html += row('поля', c.fields + cut('fields'), t.fields);

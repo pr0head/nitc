@@ -6,6 +6,8 @@
 //   fields toggle → field FILL only (no edges)
 //   links toggle  → standalone links AND the 3 edges of every field
 //   portals       → fixed-size dot, black outline; selected = thicker red outline
+//   corner portals (link/field ends with no portal data) → smaller dot under
+//                   the portals; faction filter only (no level to filter by)
 import L from 'leaflet';
 import { FACTION } from '../config.js';
 
@@ -13,6 +15,7 @@ export const fcol = (id) => FACTION[id]?.color || FACTION.neu.color;
 export const ll = (p) => p && Number.isFinite(p.lat) && Number.isFinite(p.lng);
 
 export const PORTAL_R = 7;
+const CORNER_R = 4;
 const SEL_COL = '#ff2d2d';
 
 // Links/fields have no neutral toggle — only the two faction toggles gate them.
@@ -68,6 +71,20 @@ export function render(groups, data, { onPortalClick, selectedId, filters: f, st
         color: fcol(l.faction), weight: 1.3, opacity: 0.8, interactive: false,
       }).addTo(groups.links);
     }
+  }
+
+  // a click opens the regular card: the id is real, /portals/{id} has the rest
+  for (const p of data.corners || []) {
+    if (!ll(p) || !factionOn(f, p.faction)) continue;
+    const sel = p.id === selectedId;
+    L.circleMarker([p.lat, p.lng], {
+      radius: CORNER_R,
+      color: sel ? SEL_COL : '#000',
+      weight: sel ? 2.5 : 1,
+      fillColor: fcol(p.faction),
+      fillOpacity: 0.9,
+    }).on('click', () => onPortalClick?.({ id: p.id, name: '', lat: p.lat, lng: p.lng }))
+      .addTo(groups.portals);
   }
 
   const marks = [];

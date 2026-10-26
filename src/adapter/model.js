@@ -94,13 +94,30 @@ export function adaptEvent(e) {
 
 // Full /map response → model + the LOD/truncation metadata the UI surfaces.
 export function adaptMap(json) {
+  const portals = (json.portals || []).map(adaptPortal);
+  const links = (json.links || []).map(adaptLink);
+  const fields = (json.fields || []).map(adaptField);
   return {
     schema: json.schema,
     lod: json.lod || null,
     portalsOmitted: !!json.portals_omitted,
     truncated: json.truncated || null,
-    portals: (json.portals || []).map(adaptPortal),
-    links: (json.links || []).map(adaptLink),
-    fields: (json.fields || []).map(adaptField),
+    portals, links, fields,
+    corners: cornerPortals(portals, links, fields),
   };
+}
+
+// Portals known only as link ends and field corners — no name, level or XM.
+// They stand in where /map has no portal entry: omitted by LOD at low zoom, or
+// cut by the cap. The owner follows from the link/field: in the classic rules
+// both ends of a link and every corner of a field belong to its faction.
+function cornerPortals(portals, links, fields) {
+  const known = new Set(portals.map((p) => p.id));
+  const out = new Map();
+  const add = (v, faction) => {
+    if (v?.id != null && !known.has(v.id) && !out.has(v.id)) out.set(v.id, { id: v.id, lat: v.lat, lng: v.lng, faction });
+  };
+  for (const l of links) { add(l.a, l.faction); add(l.b, l.faction); }
+  for (const f of fields) for (const v of f.v) add(v, f.faction);
+  return [...out.values()];
 }

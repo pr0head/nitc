@@ -118,7 +118,7 @@ export function createMap(el, { onStatus, onPortalClick, onUnauthorized, statusE
       paint();
       onStatus?.({
         loading: false,
-        counts: { portals: data.portals.length, links: data.links.length, fields: data.fields.length },
+        counts: { portals: data.portals.length, corners: data.corners.length, links: data.links.length, fields: data.fields.length },
         portalsOmitted: data.portalsOmitted,
         truncated: data.truncated,
         lod: data.lod,
@@ -179,7 +179,7 @@ export function createMap(el, { onStatus, onPortalClick, onUnauthorized, statusE
 
   // Loaded viewport data — the portal card counts links/fields from it and the
   // draw tools snap to its portals.
-  const getData = () => lastData || { portals: [], links: [], fields: [] };
+  const getData = () => lastData || { portals: [], corners: [], links: [], fields: [] };
 
   // a starred portal may carry the "favorite" arc
   bus.on('favoritesChanged', paint);

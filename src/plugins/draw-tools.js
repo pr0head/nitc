@@ -264,7 +264,8 @@ export function mountDrawTools(container, engine) {
 
   // ---- ops ----
   function snapAll() {
-    const ps = engine.getData().portals;
+    const d = engine.getData();
+    const ps = [...d.portals, ...d.corners]; // corners: link/field ends when zoomed out
     if (!ps.length) return;
     const b = map.getBounds(); // only vertices currently on screen
     model.forEach((s) => {
