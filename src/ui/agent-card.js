@@ -7,9 +7,11 @@
 // for a minute instead of refetching on every click. A nickname that no longer
 // exists (renamed, system author) is a 404: say so in the card.
 //
-// Medals have no images in the API (only logical artwork keys): a tier chip in
-// the tier colour stands in. The earned tier is the server's; thresholds only
-// show the way to the next one.
+// Medals have no images in the API (only logical artwork keys): a grid of
+// classic Ingress medal pictures (medal-art.js) in the server's order (the
+// same place on every card), coloured for the tier, grey when not earned. The
+// earned tier is the server's; thresholds only show the way to the next one.
+// Details in the tooltip, and under the grid on a tap (no hover on a phone).
 import './agent-card.css';
 import { FACTION } from '../config.js';
 import { getAgent } from '../api/intel.js';
@@ -17,17 +19,14 @@ import { adaptAgent } from '../adapter/model.js';
 import { fcol } from '../map/render.js';
 import { bus } from '../state/bus.js';
 import { createListModal } from './dialog.js';
+import { medalSvg } from './medal-art.js';
 import { esc } from './esc.js';
 
 const TTL_MS = 60000;
-const TIERS = [
-  null,
-  { name: 'Bronze', color: '#cd7f32' },
-  { name: 'Silver', color: '#c0c6cc' },
-  { name: 'Gold', color: '#ffd24a' },
-  { name: 'Platinum', color: '#d8e6f0' },
-  { name: 'Onyx', color: '#1b1b1b', dark: true },
-];
+const TIERS = ['не получена', 'Bronze', 'Silver', 'Gold', 'Platinum', 'Onyx'];
+const CREDIT = '<div class="ag-credit">Значки: DabelCODY, ' +
+  '<a href="https://github.com/cr0ybot/ingress-logos" target="_blank" rel="noopener">ingress-logos</a>, ' +
+  '<a href="https://creativecommons.org/licenses/by-nc-sa/3.0/" target="_blank" rel="noopener">CC BY-NC-SA 3.0</a></div>';
 const METRIC = {
   hacks: 'Хаки',
   resonators_deployed: 'Установлено резонаторов',
@@ -41,22 +40,20 @@ const METRIC = {
   portals_neutralized: 'Нейтрализовано порталов',
   links_destroyed: 'Уничтожено линков',
   fields_destroyed: 'Уничтожено полей',
-  xm_recharged: 'Перезаряжено XM',
   xm_spent_recharging: 'XM на перезарядку',
   longest_hack_streak: 'Самая длинная серия хаков',
-  guardian_days: 'Удержание портала',
   glyph_points: 'Очки глифов',
   distance_walked: 'Пройдено',
   xm_collected: 'Собрано XM',
   mu_captured: 'Захвачено MU',
 };
-// statistics sections, as in the game client; codes not listed here (and any
-// new ones) go to "Прочее"
+// statistics sections, as in the game client; codes not listed here are not
+// shown
 const GROUPS = [
   ['Мои MU', ['mu_captured']],
   ['Исследование', ['unique_visits', 'unique_captures', 'distance_walked']],
   ['Строительство', ['portals_captured', 'resonators_deployed', 'mods_deployed', 'links_created', 'fields_created']],
-  ['Взлом и ресурсы', ['hacks', 'glyph_points', 'xm_recharged', 'xm_spent_recharging', 'xm_collected', 'longest_hack_streak']],
+  ['Взлом и ресурсы', ['hacks', 'glyph_points', 'xm_spent_recharging', 'xm_collected', 'longest_hack_streak']],
   ['Боевые действия', ['resonators_destroyed', 'portals_neutralized', 'links_destroyed', 'fields_destroyed']],
 ];
 const TABS = [['medals', 'Медали'], ['stats', 'Статистика']];
@@ -99,6 +96,16 @@ export function mountAgentCard() {
 
   bus.on('openAgent', open);
   modal.list.addEventListener('click', (e) => {
+    const md = e.target.closest('.ag-medal');
+    if (md) {
+      const det = modal.list.querySelector('.ag-mdet');
+      const on = !md.classList.contains('sel');
+      modal.list.querySelectorAll('.ag-medal.sel').forEach((x) => x.classList.remove('sel'));
+      md.classList.toggle('sel', on);
+      det.textContent = on ? md.dataset.det : '';
+      det.hidden = !on;
+      return;
+    }
     const b = e.target.closest('.seg button');
     if (!b) return;
     tab = b.dataset.tab;
@@ -157,22 +164,19 @@ export function mountAgentCard() {
       `<button type="button" data-tab="${k}"${k === tab ? ' class="on"' : ''}>${t}</button>`).join('') + '</div>');
     const pane = (k, html) => `<div class="ag-pane" data-tab="${k}"${k === tab ? '' : ' hidden'}>${html}</div>`;
 
-    // medals: earned first (by tier), then the rest; progress from the metric
+    // medals: one badge each, progress from the metric
     const byCode = new Map(a.lifetime.map((m) => [m.code, m]));
-    const medals = [...a.medals].sort((x, y) => y.tier - x.tier || x.title.localeCompare(y.title));
-    if (!medals.length) parts.push(pane('medals', '<div class="lm-empty">Медалей нет.</div>'));
+    if (!a.medals.length) parts.push(pane('medals', '<div class="lm-empty">Медалей нет.</div>'));
     else {
-      const earned = medals.filter((m) => m.tier > 0).length;
-      parts.push(pane('medals', `<div class="ag-sub">Получено ${earned} из ${medals.length}</div><div class="ag-medals">` + medals.map((m) => {
-        const t = TIERS[m.tier];
+      const earned = a.medals.filter((m) => m.tier > 0).length;
+      parts.push(pane('medals', `<div class="ag-sub">Получено ${earned} из ${a.medals.length}</div><div class="ag-medals">` + a.medals.map((m) => {
         const v = byCode.get(m.metric)?.value;
         const goal = m.thresholds[m.tier]; // the next tier's threshold
         const prog = m.tier >= 5 ? 'макс.' : v != null && goal ? `${n(v)} / ${n(goal)}` : '';
-        const cls = t ? (t.dark ? ' ag-dark' : '') : ' ag-none';
-        return `<div class="ag-medal${cls}" title="${esc(m.desc)}">` +
-          `<span class="ag-tier"${t ? ` style="background:${t.color}"` : ''}>${t ? t.name : '—'}</span>` +
-          `<span class="ag-mt">${esc(m.title)}</span><span class="ag-mp">${prog}</span></div>`;
-      }).join('') + '</div>'));
+        const det = [m.title, TIERS[m.tier] || '', prog].filter(Boolean).join(' · ') + (m.desc ? ' — ' + m.desc : '');
+        return `<div class="ag-medal${m.tier > 0 ? '' : ' ag-none'}" title="${esc(det)}" data-det="${esc(det)}">` +
+          `${medalSvg(m.id, m.tier, m.title)}<span>${esc(m.title)}</span></div>`;
+      }).join('') + '</div><div class="ag-mdet" hidden></div>' + CREDIT));
     }
 
     // lifetime statistics by section, only what the server tracks; coverage in
@@ -184,11 +188,8 @@ export function mountAgentCard() {
       return `<div class="ag-st" title="${esc((COVERAGE[m.coverage] || m.coverage) + since)}">` +
         `<span>${esc(METRIC[m.code] || m.code)}</span><span>${fmtValue(m)}</span></div>`;
     };
-    const listed = new Set(GROUPS.flatMap(([, codes]) => codes));
-    const sections = [
-      ...GROUPS.map(([title, codes]) => [title, codes.map((c) => trackedBy.get(c)).filter(Boolean)]),
-      ['Прочее', tracked.filter((m) => !listed.has(m.code))],
-    ].filter(([, ms]) => ms.length);
+    const sections = GROUPS.map(([title, codes]) => [title, codes.map((c) => trackedBy.get(c)).filter(Boolean)])
+      .filter(([, ms]) => ms.length);
     parts.push(pane('stats', sections.length
       ? sections.map(([title, ms]) => `<div class="ag-sub">${title}</div><div class="ag-stats">${ms.map(row).join('')}</div>`).join('')
       : '<div class="lm-empty">Статистики нет.</div>'));
