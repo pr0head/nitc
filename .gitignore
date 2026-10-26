@@ -26,3 +26,12 @@ tmp/
 .DS_Store
 Thumbs.db
 *.swp
+
+# Android shell — build output, local SDK path, signing keys
+android/.gradle/
+android/.kotlin/
+android/build/
+android/app/build/
+android/local.properties
+*.jks
+*.keystore
