@@ -7,7 +7,7 @@
   },
   "servers": [
     {
-      "url": "https://netgress.glubina.org",
+      "url": "https://api.netgress.ru",
       "description": "Primary"
     },
     {

@@ -1,6 +1,6 @@
 # Рейтинг агентов: GET /v1/intel/rating
 
-Контракт **1.2.0**, 26 октября 2026. Этот документ описывает только новый маршрут рейтинга для сторонних карт Netgress. Основной адрес: `https://netgress.glubina.org`. Альтернативный адрес: `https://ingress.worldofton.ru`.
+Контракт **1.2.0**, 26 октября 2026. Этот документ описывает только новый маршрут рейтинга для сторонних карт Netgress. Основной адрес: `https://api.netgress.ru`. Альтернативный адрес: `https://ingress.worldofton.ru`.
 
 ## Запрос
 
@@ -160,7 +160,7 @@ async function loadRating(token, kind, cursor = null, signal) {
   const query = new URLSearchParams({ kind });
   if (cursor) query.set('cursor', cursor);
   const response = await fetch(
-    `https://netgress.glubina.org/v1/intel/rating?${query}`,
+    `https://api.netgress.ru/v1/intel/rating?${query}`,
     {
       headers: { Authorization: `Bearer ${token}` },
       credentials: 'omit',

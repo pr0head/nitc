@@ -30,10 +30,10 @@
 Основной адрес:
 
 ```text
-https://netgress.glubina.org
+https://api.netgress.ru
 ```
 
-Альтернативный опубликованный адрес — `https://ingress.worldofton.ru`. Для одного клиента выбирайте один адрес и привязывайте сохранённую сессию и кеш к нему.
+Прежний адрес `https://netgress.glubina.org` пока продолжает работать. Альтернативный опубликованный адрес — `https://ingress.worldofton.ru`. Для одного клиента выбирайте один адрес и привязывайте сохранённую сессию и кеш к нему.
 
 ### Важное ограничение CORS
 
@@ -92,7 +92,7 @@ https://pr0head.github.io
 
 ```bash
 curl --silent --show-error --fail-with-body \
-  -X POST 'https://netgress.glubina.org/v1/auth/intel/login' \
+  -X POST 'https://api.netgress.ru/v1/auth/intel/login' \
   -H 'Content-Type: application/json' \
   --data-binary @login.json
 ```
@@ -102,7 +102,7 @@ curl --silent --show-error --fail-with-body \
 ```bash
 curl --silent --show-error --fail-with-body --compressed \
   -H "Authorization: Bearer ${NETGRESS_TOKEN}" \
-  'https://netgress.glubina.org/v1/intel/map?bbox=38.95,44.95,39.05,45.05&zoom=16'
+  'https://api.netgress.ru/v1/intel/map?bbox=38.95,44.95,39.05,45.05&zoom=16'
 ```
 
 Откройте карточку одного из **полученных** порталов, подставив его UUID:
@@ -110,7 +110,7 @@ curl --silent --show-error --fail-with-body --compressed \
 ```bash
 curl --silent --show-error --fail-with-body --compressed \
   -H "Authorization: Bearer ${NETGRESS_TOKEN}" \
-  "https://netgress.glubina.org/v1/intel/portals/${PORTAL_ID}"
+  "https://api.netgress.ru/v1/intel/portals/${PORTAL_ID}"
 ```
 
 Все UUID, никнеймы и данные в JSON-примерах документа вымышлены. Курсоры в примерах — обозначения; рабочие значения нужно получать из ответов сервера.
@@ -645,7 +645,7 @@ ETag вычисляется после чтения актуального со�
 Ниже самостоятельный JavaScript-пример получения снимка. Он работает в разрешённом браузерном origin либо в среде с `fetch`, где браузерный CORS не применяется. Сам по себе код не открывает доступ новому веб-домену.
 
 ```javascript
-const API = 'https://netgress.glubina.org';
+const API = 'https://api.netgress.ru';
 
 async function readMap(token, bbox, zoom, { signal, cached } = {}) {
   const params = new URLSearchParams({ bbox: bbox.join(','), zoom: String(zoom) });
