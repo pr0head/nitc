@@ -55,22 +55,23 @@ Vite + vanilla JS (no heavy framework), map engine **Leaflet**. `npm run dev`
 (proxy at `/api` dodges CORS server-side), `npm run build` → static `dist/` for
 GitHub Pages (base `/nitc/`). CORS/prod-origin details in `docs/architecture.md`.
 
-## Architecture (target)
+## Architecture
 Thin layers, framework-light, so the map engine and UI stay swappable.
 - `src/api/` — transport (fetch, Bearer, ETag cache, abort, generation guard, error→code mapping).
 - `src/adapter/` — map JSON → internal model (links via `source_portal_id`; fields = 3 vertices;
   faction normalize; 180th-meridian & geodesic handling live here, not in the API layer).
 - `src/map/` — engine + render (portals, links, fields, LOD/truncated handling).
 - `src/ui/` — panels, portal card, COMM, filters, layer chooser — the modern UI/UX.
-- `src/plugins/` — optional features (draw/plan, favorites, highlighters) on a small event bus.
-- `src/state/` — session, viewport data, prefs (localStorage), selection.
+- `src/game/` — classic-rule portal math for the card (link range, shielding, hacks, energy, AP).
+- `src/plugins/` — optional features (draw/plan, favorites) on a small event bus.
+- `src/state/` — session, prefs (localStorage), favorites, event bus.
 See `docs/architecture.md` for the detailed module plan and data model.
 
 ## Conventions
 - Match existing code style in each file; keep comments at the surrounding density.
 - Small, composable modules; no heavyweight framework unless we agree on one first.
 - Commit messages: imperative, scoped (e.g. `api: add ETag revalidation`).
-- Do not commit `dist/` build artifacts until the build is agreed (see `.gitignore`).
+- Never commit `dist/` — it is a build artifact (see `.gitignore`).
 
 ## Before you start a task
 - Read `docs/NETGRESS_MAP_API.md` for anything touching the network.

@@ -29,10 +29,9 @@ src/
 
 Фичи общаются через `state/bus.js` (`portalClick`, `openPortal`,
 `favoritesChanged`, `drawChanged`/`drawLoad`, `toolActivated`), а не импортом
-друг друга. Бэклог фич на доступных данных — `docs/feature-backlog.md`; чего не хватает в
-API — `docs/future-ideas.md`.
+друг друга. Отложенные идеи фич (в т.ч. ждущие API) — `docs/future-ideas.md`.
 
-## Внутренняя модель (черновик)
+## Внутренняя модель
 ```
 Portal  { id, name, lat, lng, faction, level, resonatorCount, xm:{cur,max} }
 Detail  extends Portal { photoUrl, owner, resonators:[8|null], mods:[4|null] }
@@ -53,20 +52,20 @@ Event   { id:int64, kind, time, actorId, nickname, faction, portals:[{id,name,la
 - порядок резонаторов: слот 0 = север, по часовой, шаг 45° (без IITC-преобразования).
 
 ## Поток данных
-1. Логин → токен (в памяти + защищённое хранилище сессии), `scope: intel:read`.
+1. Логин → токен `scope: intel:read` в `localStorage` (перезагрузка не
+   разлогинивает); выход — отзыв сессии и сброс.
 2. `moveend`/zoom → debounce ~350 мс → `GET /map` (bbox+целый zoom), abort старого,
    generation-guard, ETag/304.
-3. Рендер по модели; выбор портала → `GET /portals/{id}`, короткий кеш, лимит параллелизма.
+3. Рендер по модели; выбор портала → `GET /portals/{id}` (ETag/304, прежний
+   запрос отменяется).
 4. COMM: первая страница без курсора (50 новых→старых); `cursor=next` в прошлое;
    `after` для новых (старые→новые), дочитывать при `more=true`; сброс курсоров при смене bbox.
 5. Периодическое обновление ~30 с; пауза на скрытой вкладке; на 401 — сброс сессии и вход.
+6. 429 → код `rate_limited` и `Retry-After` показываются в статусе карты и COMM.
 
-## Фичи (план, по приоритету)
-1. База: карта + слои (порталы/линки/поля), фильтры (уровень/фракция/типы).
-2. Карточка портала: резонаторы, моды+характеристики, энергия (`current/max_xm`), фото-заглушка.
-3. COMM-лента в области.
-4. Планирование: рисование линий/полей, импорт-экспорт схем (совместимый JSON).
-5. Избранное, подсветка (по уровню/фракции/энергии — всё из снимка карты).
+## Состояние фич
+Реализованное перечислено в `README.md` («Возможности»); отложенные идеи — в
+`docs/future-ideas.md`.
 
 Доступно из снимка карты массово: уровень, фракция, энергия портала. Владелец,
 резонаторы и моды — только в карточке (`/portals/{id}`), поэтому подсветка «по
@@ -87,6 +86,10 @@ Vite + vanilla JS (без тяжёлого фреймворка).
 - `npm run dev` — дев-сервер на `http://localhost:5173`, HMR.
 - `npm run build` → статика в `dist/`; `npm run preview` — проверка сборки.
 - Прод-база пути: `/nitc/` (GitHub Pages). Переопределяется `VITE_BASE`.
+- Деплой: `.github/workflows/deploy.yml` — на каждый push в `main` (или вручную)
+  `npm ci && npm run build` и публикация `dist/` на GitHub Pages
+  (`https://pr0head.github.io/nitc/`). В настройках репозитория один раз:
+  Settings → Pages → Source: GitHub Actions.
 
 ### CORS и как его обходим
 Сервер Netgress пускает по CORS только два интел-origin Ingress; localhost и
@@ -96,12 +99,12 @@ GitHub Pages среди них нет (иначе `403 origin_denied`). Запр
   заголовки `Origin`/`Referer` → для Netgress это запрос без Origin → проходит.
   Проверено: `GET /api/v1/intel/map` отдаёт `401` (не `403`), с токеном — данные.
 - **prod (статика):** прокси нет. Нужен один из вариантов:
-  1) владелец Netgress добавляет наш прод-origin в allowlist (есть благословение
-     автора), либо
+  1) владелец Netgress добавляет наш прод-origin `https://pr0head.github.io` в
+     allowlist (запрашиваем у владельца), либо
   2) `VITE_API_BASE` указывает на разрешённый прокси.
 - Базовый адрес API: `src/config.js` — `/api` в dev, `VITE_API_BASE` или прямой
   origin в prod.
 
 ## Открытые вопросы
-- Согласование CORS-origin для прод-домена (п. «CORS» выше) — до публикации.
+- Разрешение CORS-origin для прод-домена (п. «CORS» выше) — до публикации.
 - Базовые тайлы и их условия использования.
