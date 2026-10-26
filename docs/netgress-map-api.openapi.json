@@ -1,0 +1,2351 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Netgress Map API",
+    "version": "1.1.0",
+    "description": "Read-only Netgress API for third-party maps, reviewed 2026-10-26. Includes public agent profiles, owner-only keys and inventory summaries, and world MU balance. Allowed browser origins: https://intel.ingress.com, https://intel-x.ingress.com, https://pr0head.github.io. Bearer Intel tokens remain read-only and are required for every GET. Examples are synthetic."
+  },
+  "servers": [
+    {
+      "url": "https://netgress.glubina.org",
+      "description": "Primary"
+    },
+    {
+      "url": "https://ingress.worldofton.ru",
+      "description": "Alternative"
+    }
+  ],
+  "security": [
+    {
+      "IntelBearer": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Session"
+    },
+    {
+      "name": "Map"
+    },
+    {
+      "name": "Activity"
+    },
+    {
+      "name": "Agents"
+    },
+    {
+      "name": "Personal"
+    },
+    {
+      "name": "Score"
+    }
+  ],
+  "paths": {
+    "/v1/auth/intel/login": {
+      "post": {
+        "operationId": "loginIntel",
+        "tags": [
+          "Session"
+        ],
+        "summary": "Sign in to an existing verified Netgress account",
+        "description": "Requires an existing game profile. New read-only sessions do not expire automatically (expires_at null). Browser CORS is restricted.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              },
+              "example": {
+                "email": "developer@example.com",
+                "password": "your-password"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Read-only session issued.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntelCredentials"
+                },
+                "example": {
+                  "token": "ngi_<opaque-secret>",
+                  "expires_at": null,
+                  "scope": "intel:read"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400"
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "429": {
+            "$ref": "#/components/responses/429"
+          },
+          "500": {
+            "$ref": "#/components/responses/500"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
+      }
+    },
+    "/v1/intel/map": {
+      "get": {
+        "operationId": "getMap",
+        "tags": [
+          "Map"
+        ],
+        "summary": "Read portals, links and fields in a viewport",
+        "description": "Portals from zoom 15; strict minimum link-length thresholds at lower zoom. Fields have no minimum size threshold. Maximum 3000 portals / 2000 links / 2000 fields. No continuation cursor. See the guide for truncation and geodesic rendering.",
+        "parameters": [
+          {
+            "name": "bbox",
+            "in": "query",
+            "required": true,
+            "description": "west,south,east,north in WGS84 degrees. Longitude [-180,180], latitude [-90,90], south <= north. west > east crosses the antimeridian.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "38.95,44.95,39.05,45.05"
+          },
+          {
+            "name": "zoom",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 22
+            },
+            "example": 16
+          },
+          {
+            "name": "If-None-Match",
+            "in": "header",
+            "required": false,
+            "description": "ETag from a cached successful response for the same URL/account.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response.",
+            "headers": {
+              "ETag": {
+                "description": "Content validator. Send as If-None-Match for the same URL/account.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Successful Intel GET returns private, no-cache."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MapSnapshot"
+                },
+                "example": {
+                  "schema": 1,
+                  "lod": {
+                    "zoom": 16,
+                    "min_link_length_m": 0,
+                    "has_portals": true
+                  },
+                  "portals_omitted": false,
+                  "truncated": {},
+                  "portals": [
+                    {
+                      "id": "00000000-0000-4000-8000-000000000001",
+                      "name": "Example North",
+                      "position": {
+                        "latitude": 45.001,
+                        "longitude": 39.0
+                      },
+                      "faction": "blue",
+                      "level": 1,
+                      "resonator_count": 1,
+                      "current_xm": 1250,
+                      "max_xm": 2500
+                    }
+                  ],
+                  "links": [
+                    {
+                      "id": "00000000-0000-4000-8000-000000000011",
+                      "faction": "blue",
+                      "source_portal_id": "00000000-0000-4000-8000-000000000001",
+                      "vertices": [
+                        {
+                          "id": "00000000-0000-4000-8000-000000000001",
+                          "position": {
+                            "latitude": 45.001,
+                            "longitude": 39.0
+                          }
+                        },
+                        {
+                          "id": "00000000-0000-4000-8000-000000000002",
+                          "position": {
+                            "latitude": 45.0,
+                            "longitude": 39.002
+                          }
+                        }
+                      ]
+                    }
+                  ],
+                  "fields": [
+                    {
+                      "id": "00000000-0000-4000-8000-000000000012",
+                      "faction": "blue",
+                      "mu": null,
+                      "vertices": [
+                        {
+                          "id": "00000000-0000-4000-8000-000000000001",
+                          "position": {
+                            "latitude": 45.001,
+                            "longitude": 39.0
+                          }
+                        },
+                        {
+                          "id": "00000000-0000-4000-8000-000000000002",
+                          "position": {
+                            "latitude": 45.0,
+                            "longitude": 39.002
+                          }
+                        },
+                        {
+                          "id": "00000000-0000-4000-8000-000000000003",
+                          "position": {
+                            "latitude": 45.0,
+                            "longitude": 38.998
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Unchanged representation; no body. Use cached JSON for the same URL/account.",
+            "headers": {
+              "ETag": {
+                "description": "Content validator. Send as If-None-Match for the same URL/account.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Successful Intel GET returns private, no-cache."
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400"
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "429": {
+            "$ref": "#/components/responses/429"
+          },
+          "500": {
+            "$ref": "#/components/responses/500"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
+      }
+    },
+    "/v1/intel/portals/{id}": {
+      "get": {
+        "operationId": "getPortal",
+        "tags": [
+          "Map"
+        ],
+        "summary": "Read a portal card, resonator slots and installed mods",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-None-Match",
+            "in": "header",
+            "required": false,
+            "description": "ETag from a cached successful response for the same URL/account.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response.",
+            "headers": {
+              "ETag": {
+                "description": "Content validator. Send as If-None-Match for the same URL/account.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Successful Intel GET returns private, no-cache."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortalDetails"
+                },
+                "example": {
+                  "schema": 1,
+                  "id": "00000000-0000-4000-8000-000000000001",
+                  "name": "Example North",
+                  "position": {
+                    "latitude": 45.001,
+                    "longitude": 39.0
+                  },
+                  "faction": "blue",
+                  "level": 1,
+                  "resonator_count": 1,
+                  "current_xm": 1250,
+                  "max_xm": 2500,
+                  "photo_url": "",
+                  "owner": "ExampleAgent",
+                  "resonators": [
+                    {
+                      "slot": 0,
+                      "level": 4,
+                      "current_xm": 1250,
+                      "max_xm": 2500,
+                      "owner": "ExampleAgent"
+                    },
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null
+                  ],
+                  "mods": [
+                    {
+                      "slot": 0,
+                      "owner": "ExampleAgent",
+                      "spec": {
+                        "kind": "shield_common",
+                        "type": "shield",
+                        "name": "Portal Shield",
+                        "rarity": "common",
+                        "xm_cost": 400,
+                        "recycle_xm": 40,
+                        "mitigation": 30,
+                        "stickiness": 0,
+                        "range_multiplier": 0,
+                        "link_defense": 0,
+                        "outgoing": 0,
+                        "heat": 0,
+                        "hacks": 0,
+                        "force": 0,
+                        "strike": 0,
+                        "hit_bonus": 0,
+                        "drop_chance": 0.02
+                      }
+                    },
+                    null,
+                    null,
+                    null
+                  ],
+                  "planning": {
+                    "fully_deployed": false,
+                    "max_link_range_m": 0,
+                    "incoming_links": 0,
+                    "outgoing_links": 0,
+                    "outgoing_limit": 8
+                  }
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Unchanged representation; no body. Use cached JSON for the same URL/account.",
+            "headers": {
+              "ETag": {
+                "description": "Content validator. Send as If-None-Match for the same URL/account.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Successful Intel GET returns private, no-cache."
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "404": {
+            "$ref": "#/components/responses/404"
+          },
+          "429": {
+            "$ref": "#/components/responses/429"
+          },
+          "500": {
+            "$ref": "#/components/responses/500"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
+      }
+    },
+    "/v1/intel/activity": {
+      "get": {
+        "operationId": "getActivity",
+        "tags": [
+          "Activity"
+        ],
+        "summary": "Read the visible viewport activity log",
+        "description": "Uses historical event anchor position and server faction visibility. Up to 50 events. Initial/older pages sort descending; after pages sort ascending. cursor and after are mutually exclusive and bound to account, faction, direction and exact bbox. distance_m is currently 0, not measured.",
+        "parameters": [
+          {
+            "name": "bbox",
+            "in": "query",
+            "required": true,
+            "description": "west,south,east,north in WGS84 degrees. Longitude [-180,180], latitude [-90,90], south <= north. west > east crosses the antimeridian.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "38.95,44.95,39.05,45.05"
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 800
+            },
+            "description": "Older continuation from next; cannot be combined with after."
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 800
+            },
+            "description": "New-event continuation; cannot be combined with cursor."
+          },
+          {
+            "name": "If-None-Match",
+            "in": "header",
+            "required": false,
+            "description": "ETag from a cached successful response for the same URL/account.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response.",
+            "headers": {
+              "ETag": {
+                "description": "Content validator. Send as If-None-Match for the same URL/account.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Successful Intel GET returns private, no-cache."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityPage"
+                },
+                "example": {
+                  "items": [
+                    {
+                      "id": 1234,
+                      "kind": "capture",
+                      "time": "2026-10-25T09:30:00Z",
+                      "actor_id": "00000000-0000-4000-8000-000000000099",
+                      "nickname": "ExampleAgent",
+                      "faction": "blue",
+                      "portals": [
+                        {
+                          "id": "00000000-0000-4000-8000-000000000001",
+                          "name": "Example North",
+                          "latitude": 45.001,
+                          "longitude": 39.0
+                        }
+                      ],
+                      "mu": null,
+                      "distance_m": 0
+                    }
+                  ],
+                  "next": "",
+                  "after": "opaque-value-from-server",
+                  "more": false
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Unchanged representation; no body. Use cached JSON for the same URL/account.",
+            "headers": {
+              "ETag": {
+                "description": "Content validator. Send as If-None-Match for the same URL/account.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Successful Intel GET returns private, no-cache."
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400"
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "429": {
+            "$ref": "#/components/responses/429"
+          },
+          "500": {
+            "$ref": "#/components/responses/500"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
+      }
+    },
+    "/v1/intel/session": {
+      "delete": {
+        "operationId": "logoutIntel",
+        "tags": [
+          "Session"
+        ],
+        "summary": "Revoke the current read-only token",
+        "responses": {
+          "204": {
+            "description": "Token revoked. No response body."
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "429": {
+            "$ref": "#/components/responses/429"
+          },
+          "500": {
+            "$ref": "#/components/responses/500"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
+      }
+    },
+    "/v1/intel/me": {
+      "get": {
+        "operationId": "getMyIntelProfile",
+        "tags": [
+          "Personal"
+        ],
+        "summary": "Read the current token owner profile",
+        "description": "Owner is derived exclusively from the Intel token. Same public fields as an agent profile; no email, location, XM, route or inventory. no-store.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store; do not cache personal data."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentProfile"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "429": {
+            "$ref": "#/components/responses/429"
+          },
+          "500": {
+            "$ref": "#/components/responses/500"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
+      }
+    },
+    "/v1/intel/agents/{id}": {
+      "get": {
+        "operationId": "getIntelAgentById",
+        "tags": [
+          "Agents"
+        ],
+        "summary": "Read a public agent profile by UUID",
+        "description": "Existing profiles only. Invalid/missing UUID returns 404. Medals and lifetime/current statistics preserve availability and coverage flags.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Public game user UUID."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store; do not cache personal data."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentProfile"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "404": {
+            "$ref": "#/components/responses/404"
+          },
+          "429": {
+            "$ref": "#/components/responses/429"
+          },
+          "500": {
+            "$ref": "#/components/responses/500"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
+      }
+    },
+    "/v1/intel/agents": {
+      "get": {
+        "operationId": "getIntelAgentByNickname",
+        "tags": [
+          "Agents"
+        ],
+        "summary": "Resolve an exact nickname and read a public profile",
+        "description": "",
+        "parameters": [
+          {
+            "name": "nickname",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "description": "Exact nickname, case-insensitive. URL-encode Unicode and reserved characters. No wildcard/list search."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store; do not cache personal data."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentProfile"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400"
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "404": {
+            "$ref": "#/components/responses/404"
+          },
+          "429": {
+            "$ref": "#/components/responses/429"
+          },
+          "500": {
+            "$ref": "#/components/responses/500"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
+      }
+    },
+    "/v1/intel/me/keys": {
+      "get": {
+        "operationId": "getMyIntelKeys",
+        "tags": [
+          "Personal"
+        ],
+        "summary": "Read a bounded page of owned portal keys",
+        "description": "Maximum 128 portals. quantity = available_quantity + contained_quantity. Includes own loose keys and keys inside own capsules/MUFG; excludes drops and other owners. Each page is a fresh read; no cross-page snapshot. no-store.",
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Previous next_cursor; empty for the first page. Otherwise canonical lowercase UUID."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store; do not cache personal data."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntelKeyPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400"
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "429": {
+            "$ref": "#/components/responses/429"
+          },
+          "500": {
+            "$ref": "#/components/responses/500"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
+      }
+    },
+    "/v1/intel/me/inventory": {
+      "get": {
+        "operationId": "getMyIntelInventory",
+        "tags": [
+          "Personal"
+        ],
+        "summary": "Read an owner-only inventory summary",
+        "description": "One aggregate per kind+level, sorted. quantity combines loose items and contents of all owned capsules/MUFG, without a container split. Containers themselves count under their own kind. No item/container IDs, names, operations or other users. level=0 for non-levelled kinds. no-store.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store; do not cache personal data."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InventorySummary"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "429": {
+            "$ref": "#/components/responses/429"
+          },
+          "500": {
+            "$ref": "#/components/responses/500"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
+      }
+    },
+    "/v1/intel/score": {
+      "get": {
+        "operationId": "getIntelWorldScore",
+        "tags": [
+          "Score"
+        ],
+        "summary": "Read the published world MU balance",
+        "description": "Active-field faction balance in the active MU epoch, not lifetime personal MU. Uses background snapshot only. Partial/stale/empty snapshots do not invent percentages. Disabled/unavailable returns null counts. Green=enlightened, blue=resistance. A snapshot older than two minutes is stale.",
+        "parameters": [
+          {
+            "name": "If-None-Match",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ETag from same URL/account."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "private, no-cache; ETag revalidation."
+              },
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorldScore"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Unchanged; no body. Reuse same URL/account cached response."
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "429": {
+            "$ref": "#/components/responses/429"
+          },
+          "500": {
+            "$ref": "#/components/responses/500"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "IntelBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "opaque ngi_ token",
+        "description": "Token issued by POST /v1/auth/intel/login. Read-only; not a game access token."
+      }
+    },
+    "schemas": {
+      "Position": {
+        "type": "object",
+        "properties": {
+          "latitude": {
+            "type": "number",
+            "minimum": -90,
+            "maximum": 90
+          },
+          "longitude": {
+            "type": "number",
+            "minimum": -180,
+            "maximum": 180
+          }
+        },
+        "required": [
+          "latitude",
+          "longitude"
+        ]
+      },
+      "Faction": {
+        "type": "string",
+        "enum": [
+          "blue",
+          "green",
+          "neutral"
+        ]
+      },
+      "LoginRequest": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "description": "Existing verified account email."
+          },
+          "password": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Maximum 256 UTF-8 bytes on server; do not retain the password."
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ]
+      },
+      "IntelCredentials": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "Opaque read-only bearer secret with ngi_ prefix; not a JWT."
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "New sessions currently return null: no scheduled expiry."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scope": {
+            "type": "string",
+            "const": "intel:read"
+          }
+        },
+        "required": [
+          "token",
+          "expires_at",
+          "scope"
+        ]
+      },
+      "Portal": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "position": {
+            "$ref": "#/components/schemas/Position"
+          },
+          "faction": {
+            "$ref": "#/components/schemas/Faction"
+          },
+          "level": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 8
+          },
+          "resonator_count": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 8
+          },
+          "current_xm": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "max_xm": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "position",
+          "faction",
+          "level",
+          "resonator_count",
+          "current_xm",
+          "max_xm"
+        ]
+      },
+      "Vertex": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "position": {
+            "$ref": "#/components/schemas/Position"
+          }
+        },
+        "required": [
+          "id",
+          "position"
+        ]
+      },
+      "Link": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "faction": {
+            "$ref": "#/components/schemas/Faction"
+          },
+          "source_portal_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "vertices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Vertex"
+            },
+            "minItems": 2,
+            "maxItems": 2
+          }
+        },
+        "required": [
+          "id",
+          "faction",
+          "source_portal_id",
+          "vertices"
+        ],
+        "description": "Direction is defined by source_portal_id, never by vertices ordering."
+      },
+      "Field": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "faction": {
+            "$ref": "#/components/schemas/Faction"
+          },
+          "mu": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "minimum": 0,
+            "description": "Confirmed MU; null means unavailable, not zero."
+          },
+          "vertices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Vertex"
+            },
+            "minItems": 3,
+            "maxItems": 3
+          }
+        },
+        "required": [
+          "id",
+          "faction",
+          "mu",
+          "vertices"
+        ]
+      },
+      "LOD": {
+        "type": "object",
+        "properties": {
+          "zoom": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 22
+          },
+          "min_link_length_m": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Strict length threshold in metres; zero means all links."
+          },
+          "has_portals": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "zoom",
+          "min_link_length_m",
+          "has_portals"
+        ]
+      },
+      "Truncated": {
+        "type": "object",
+        "properties": {
+          "portals": {
+            "type": "boolean"
+          },
+          "links": {
+            "type": "boolean"
+          },
+          "fields": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": {
+          "type": "boolean"
+        },
+        "description": "Only exceeded collections need a key. Missing key means false."
+      },
+      "MapSnapshot": {
+        "type": "object",
+        "properties": {
+          "schema": {
+            "type": "integer",
+            "const": 1
+          },
+          "lod": {
+            "$ref": "#/components/schemas/LOD"
+          },
+          "portals_omitted": {
+            "type": "boolean"
+          },
+          "truncated": {
+            "$ref": "#/components/schemas/Truncated"
+          },
+          "portals": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Portal"
+            },
+            "maxItems": 3000
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Link"
+            },
+            "maxItems": 2000
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Field"
+            },
+            "maxItems": 2000
+          }
+        },
+        "required": [
+          "schema",
+          "lod",
+          "portals_omitted",
+          "truncated",
+          "portals",
+          "links",
+          "fields"
+        ],
+        "description": "One viewport snapshot. No map pagination; graph vertices may be absent from portals."
+      },
+      "Resonator": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 7
+          },
+          "level": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 8
+          },
+          "current_xm": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "max_xm": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "owner": {
+            "type": "string",
+            "description": "Nickname, not a user UUID."
+          }
+        },
+        "required": [
+          "slot",
+          "level",
+          "current_xm",
+          "max_xm",
+          "owner"
+        ]
+      },
+      "ModSpec": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "description": "Stable variant key, for example shield_common."
+          },
+          "type": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "description": "Server catalogue display name; use as text."
+          },
+          "rarity": {
+            "type": "string",
+            "enum": [
+              "common",
+              "rare",
+              "very_rare"
+            ]
+          },
+          "xm_cost": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "recycle_xm": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mitigation": {
+            "type": "number"
+          },
+          "stickiness": {
+            "type": "number"
+          },
+          "range_multiplier": {
+            "type": "number"
+          },
+          "link_defense": {
+            "type": "number"
+          },
+          "outgoing": {
+            "type": "integer"
+          },
+          "heat": {
+            "type": "number"
+          },
+          "hacks": {
+            "type": "integer"
+          },
+          "force": {
+            "type": "number"
+          },
+          "strike": {
+            "type": "number"
+          },
+          "hit_bonus": {
+            "type": "number"
+          },
+          "drop_chance": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "kind",
+          "type",
+          "name",
+          "rarity",
+          "xm_cost",
+          "recycle_xm",
+          "mitigation",
+          "stickiness",
+          "range_multiplier",
+          "link_defense",
+          "outgoing",
+          "heat",
+          "hacks",
+          "force",
+          "strike",
+          "hit_bonus",
+          "drop_chance"
+        ],
+        "description": "Current server catalogue values, not fixed Ingress balance."
+      },
+      "Mod": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 3
+          },
+          "owner": {
+            "type": "string"
+          },
+          "spec": {
+            "$ref": "#/components/schemas/ModSpec"
+          }
+        },
+        "required": [
+          "slot",
+          "owner",
+          "spec"
+        ]
+      },
+      "PortalDetails": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Portal"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "schema": {
+                "type": "integer",
+                "const": 1
+              },
+              "photo_url": {
+                "type": "string",
+                "description": "May be empty."
+              },
+              "owner": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "resonators": {
+                "type": "array",
+                "items": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/Resonator"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "minItems": 8,
+                "maxItems": 8
+              },
+              "mods": {
+                "type": "array",
+                "items": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/Mod"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "minItems": 4,
+                "maxItems": 4
+              },
+              "planning": {
+                "$ref": "#/components/schemas/LinkPlanning"
+              }
+            },
+            "required": [
+              "schema",
+              "photo_url",
+              "owner",
+              "resonators",
+              "mods",
+              "planning"
+            ]
+          }
+        ]
+      },
+      "ActivityPortal": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "latitude": {
+            "type": "number",
+            "minimum": -90,
+            "maximum": 90
+          },
+          "longitude": {
+            "type": "number",
+            "minimum": -180,
+            "maximum": 180
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "latitude",
+          "longitude"
+        ]
+      },
+      "ActivityEvent": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "capture",
+              "neutralize",
+              "link_create",
+              "link_destroy",
+              "field_create",
+              "field_destroy",
+              "first_link"
+            ]
+          },
+          "time": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "actor_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nickname": {
+            "type": "string"
+          },
+          "faction": {
+            "$ref": "#/components/schemas/Faction"
+          },
+          "portals": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ActivityPortal"
+            }
+          },
+          "mu": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "minimum": 0
+          },
+          "distance_m": {
+            "type": "number",
+            "description": "Currently 0 on Intel route, not a measured distance."
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "time",
+          "actor_id",
+          "nickname",
+          "faction",
+          "portals",
+          "mu",
+          "distance_m"
+        ]
+      },
+      "ActivityPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ActivityEvent"
+            },
+            "maxItems": 50
+          },
+          "next": {
+            "type": "string",
+            "maxLength": 800,
+            "description": "Older-page continuation. Empty when exhausted or querying after."
+          },
+          "after": {
+            "type": "string",
+            "maxLength": 800,
+            "description": "New-event continuation. Keep head after separate from historical pagination."
+          },
+          "more": {
+            "type": "boolean",
+            "description": "More events exist in the requested direction. For after, continue using after."
+          }
+        },
+        "required": [
+          "items",
+          "next",
+          "after",
+          "more"
+        ]
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "code",
+              "message"
+            ]
+          }
+        },
+        "required": [
+          "error"
+        ]
+      },
+      "LinkPlanning": {
+        "type": "object",
+        "properties": {
+          "fully_deployed": {
+            "type": "boolean"
+          },
+          "max_link_range_m": {
+            "type": "number",
+            "minimum": 0
+          },
+          "incoming_links": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "outgoing_links": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "outgoing_limit": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "fully_deployed",
+          "max_link_range_m",
+          "incoming_links",
+          "outgoing_links",
+          "outgoing_limit"
+        ]
+      },
+      "AgentIdentity": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nickname": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "faction": {
+            "enum": [
+              "blue",
+              "green"
+            ]
+          },
+          "ap": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "maximum": 9223372036854775807
+          },
+          "earned_level": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 8
+          },
+          "effective_level": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 8
+          },
+          "level_cap": {
+            "const": 8,
+            "type": "integer"
+          },
+          "next_level": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "level": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "required_ap": {
+                    "type": "integer",
+                    "format": "int64",
+                    "minimum": 0,
+                    "maximum": 9223372036854775807
+                  },
+                  "remaining_ap": {
+                    "type": "integer",
+                    "format": "int64",
+                    "minimum": 0,
+                    "maximum": 9223372036854775807
+                  }
+                },
+                "required": [
+                  "level",
+                  "required_ap",
+                  "remaining_ap"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "nickname",
+          "faction",
+          "ap",
+          "earned_level",
+          "effective_level",
+          "level_cap",
+          "next_level"
+        ]
+      },
+      "AgentMetric": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "unit": {
+            "enum": [
+              "count",
+              "xm",
+              "periods_24h",
+              "metres",
+              "mu"
+            ]
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "format": "int64",
+                "minimum": 0,
+                "maximum": 9223372036854775807
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "availability": {
+            "enum": [
+              "available",
+              "not_tracked",
+              "unavailable"
+            ]
+          },
+          "coverage": {
+            "enum": [
+              "since_registration",
+              "since_epoch",
+              "partial_history",
+              "current_snapshot",
+              "unknown"
+            ]
+          },
+          "observed_from": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "code",
+          "unit",
+          "value",
+          "availability",
+          "coverage",
+          "observed_from"
+        ]
+      },
+      "AgentMedal": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "availability": {
+            "enum": [
+              "active",
+              "historical_only",
+              "mechanic_missing"
+            ]
+          },
+          "metric_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "thresholds": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "minimum": 0
+            }
+          },
+          "artwork_keys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "earned_tier": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 5
+          },
+          "awarded_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "award_origin": {
+            "anyOf": [
+              {
+                "enum": [
+                  "observed",
+                  "historical_import"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "description",
+          "category",
+          "availability",
+          "metric_code",
+          "thresholds",
+          "artwork_keys",
+          "earned_tier",
+          "awarded_at",
+          "award_origin"
+        ]
+      },
+      "AgentStatistics": {
+        "type": "object",
+        "properties": {
+          "lifetime": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgentMetric"
+            }
+          },
+          "current": {
+            "type": "object",
+            "properties": {
+              "status": {
+                "enum": [
+                  "ready",
+                  "building",
+                  "unavailable"
+                ]
+              },
+              "as_of": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "metrics": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/AgentMetric"
+                }
+              }
+            },
+            "required": [
+              "status",
+              "as_of",
+              "metrics"
+            ]
+          }
+        },
+        "required": [
+          "lifetime",
+          "current"
+        ]
+      },
+      "AgentProfile": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "const": "agent_profile",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "type": "integer"
+          },
+          "generated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "catalog_version": {
+            "type": "string"
+          },
+          "agent": {
+            "$ref": "#/components/schemas/AgentIdentity"
+          },
+          "statistics": {
+            "$ref": "#/components/schemas/AgentStatistics"
+          },
+          "medals": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgentMedal"
+            }
+          }
+        },
+        "required": [
+          "kind",
+          "schema_version",
+          "generated_at",
+          "catalog_version",
+          "agent",
+          "statistics",
+          "medals"
+        ]
+      },
+      "IntelKey": {
+        "type": "object",
+        "properties": {
+          "portal_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "position": {
+            "$ref": "#/components/schemas/Position"
+          },
+          "quantity": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "maximum": 9223372036854775807
+          },
+          "available_quantity": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "maximum": 9223372036854775807
+          },
+          "contained_quantity": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "maximum": 9223372036854775807
+          }
+        },
+        "required": [
+          "portal_id",
+          "name",
+          "position",
+          "quantity",
+          "available_quantity",
+          "contained_quantity"
+        ]
+      },
+      "IntelKeyPage": {
+        "type": "object",
+        "properties": {
+          "schema": {
+            "const": 1,
+            "type": "integer"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IntelKey"
+            },
+            "maxItems": 128
+          },
+          "next_cursor": {
+            "type": "string",
+            "description": "Empty string at end; otherwise the last portal UUID. Pages are not a pinned snapshot."
+          },
+          "server_time": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "schema",
+          "items",
+          "next_cursor",
+          "server_time"
+        ]
+      },
+      "InventorySummaryItem": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "level": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 8
+          },
+          "quantity": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "maximum": 9223372036854775807
+          }
+        },
+        "required": [
+          "kind",
+          "level",
+          "quantity"
+        ]
+      },
+      "InventorySummary": {
+        "type": "object",
+        "properties": {
+          "schema": {
+            "const": 1,
+            "type": "integer"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InventorySummaryItem"
+            }
+          },
+          "server_time": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "schema",
+          "items",
+          "server_time"
+        ]
+      },
+      "MUBalance": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "enum": [
+              "ready",
+              "empty",
+              "partial",
+              "stale",
+              "disabled",
+              "unavailable"
+            ]
+          },
+          "scope": {
+            "const": "world",
+            "type": "string"
+          },
+          "epoch_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "as_of": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "revision": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "format": "int64",
+                "minimum": 0,
+                "maximum": 9223372036854775807
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "enlightened_mu": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "format": "int64",
+                "minimum": 0,
+                "maximum": 9223372036854775807
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "resistance_mu": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "format": "int64",
+                "minimum": 0,
+                "maximum": 9223372036854775807
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "active_fields": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "format": "int64",
+                "minimum": 0,
+                "maximum": 9223372036854775807
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "processed_fields": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "format": "int64",
+                "minimum": 0,
+                "maximum": 9223372036854775807
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pending_fields": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "format": "int64",
+                "minimum": 0,
+                "maximum": 9223372036854775807
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "unresolved_fields": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "format": "int64",
+                "minimum": 0,
+                "maximum": 9223372036854775807
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "enlightened_percent": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "resistance_percent": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "status",
+          "scope",
+          "epoch_id",
+          "as_of",
+          "revision",
+          "enlightened_mu",
+          "resistance_mu",
+          "active_fields",
+          "processed_fields",
+          "pending_fields",
+          "unresolved_fields",
+          "enlightened_percent",
+          "resistance_percent"
+        ]
+      },
+      "WorldScore": {
+        "type": "object",
+        "properties": {
+          "schema": {
+            "const": 1,
+            "type": "integer"
+          },
+          "balance": {
+            "$ref": "#/components/schemas/MUBalance"
+          }
+        },
+        "required": [
+          "schema",
+          "balance"
+        ]
+      }
+    },
+    "responses": {
+      "400": {
+        "description": "Invalid input, bbox, zoom or cursor.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "401": {
+        "description": "Invalid login or missing/revoked Intel token.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "403": {
+        "description": "Origin is not allowed by server CORS.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "404": {
+        "description": "Agent or portal not found (agent_not_found / portal_not_found).",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "429": {
+        "description": "Rate limit or temporary request admission limit.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        },
+        "headers": {
+          "Retry-After": {
+            "description": "Delay in seconds; may differ across server limits.",
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
+      },
+      "500": {
+        "description": "Internal server error.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "503": {
+        "description": "Temporary service unavailability.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      }
+    }
+  }
+}
