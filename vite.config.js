@@ -9,7 +9,7 @@ import { defineConfig } from 'vite';
 //   prod — static hosting has no proxy, so the production origin must be
 //          whitelisted by the Netgress owner (we have the author's blessing),
 //          or VITE_API_BASE must point at an allowed proxy.
-const UPSTREAM = process.env.VITE_UPSTREAM || 'https://netgress.glubina.org';
+const UPSTREAM = process.env.VITE_UPSTREAM || 'https://api.netgress.ru';
 
 export default defineConfig(({ command }) => ({
   // GitHub Pages serves the repo at /nitc/; dev server at root.

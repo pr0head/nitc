@@ -40,7 +40,7 @@ to that original game. Practical consequences for us:
    honor `Retry-After`. See the API doc's "Кеширование и обновление" and "Бюджеты".
 
 ## API in one screen
-- Base: `https://netgress.glubina.org` (alt: `https://ingress.worldofton.ru`) — pick ONE per client.
+- Base: `https://api.netgress.ru` (old: `https://netgress.glubina.org`, still served; alt: `https://ingress.worldofton.ru`) — pick ONE per client.
 - Auth: `POST /v1/auth/intel/login` {email,password} → `{token:"ngi_…", scope:"intel:read"}`.
   Bearer on every call. `DELETE /v1/intel/session` to revoke.
 - `GET /v1/intel/map?bbox=W,S,E,N&zoom=0..22` → `{schema,lod,portals_omitted,truncated,portals[],links[],fields[]}`.

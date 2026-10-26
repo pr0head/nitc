@@ -8,7 +8,7 @@
 //     call it directly, no proxy — the target scheme. Works in dev and prod.
 //   - Until then, dev falls back to the Vite proxy (/api → upstream, Origin
 //     stripped) so we can develop without waiting on the whitelist.
-const UPSTREAM = 'https://netgress.glubina.org';
+const UPSTREAM = 'https://api.netgress.ru';
 export const API_BASE =
   import.meta.env.VITE_API_BASE || (import.meta.env.DEV ? '/api' : UPSTREAM);
 
