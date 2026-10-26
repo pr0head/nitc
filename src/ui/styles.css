@@ -82,26 +82,46 @@ body { background: var(--bg); color: var(--text); font-family: var(--font); }
   box-shadow: 0 4px 20px #0007;
 }
 
-/* top-left identity plate */
+/* top-left identity plate + its menu: above every map panel (dialogs and
+   tooltips still go over it) */
 .who {
   position: absolute;
   top: 10px;
   left: 10px;
-  z-index: 1000;
+  z-index: 1200;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 6px 8px 6px 12px;
+  gap: 8px;
+  padding: 5px 12px 5px 5px;
   max-width: 60vw;
 }
-.who__brand { font-weight: 600; letter-spacing: 2px; color: var(--accent); font-size: 13px; }
-.who__me { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.who__logout {
-  display: flex; align-items: center; justify-content: center;
-  width: 28px; height: 28px; flex: none;
-  background: none; border: 0; border-radius: 7px; color: var(--muted); cursor: pointer;
+.who__menu {
+  display: flex; align-items: center; gap: 7px; flex: none;
+  height: 30px; padding: 0 9px 0 7px;
+  background: none; border: 1px solid transparent; border-radius: 7px; color: var(--accent); cursor: pointer;
 }
-.who__logout:hover { background: #2a1416; color: #ff9aa5; }
+.who__menu:hover, .who__menu.on { background: var(--hover); border-color: var(--line); }
+.who__brand { font-weight: 600; letter-spacing: 2px; font-size: 13px; }
+.who__me { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.menu {
+  position: absolute; top: calc(100% + 6px); left: 0; min-width: 220px; padding: 5px;
+  background: rgba(16, 21, 22, 0.97); border: 1px solid var(--line); border-radius: 10px;
+  box-shadow: 0 6px 26px #000a;
+}
+.menu[hidden] { display: none !important; }
+.menu-item {
+  display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 9px;
+  background: none; border: 0; border-radius: 7px; color: var(--text); text-decoration: none;
+  font: 13px var(--font); text-align: left; cursor: pointer;
+}
+.menu-item:hover { background: var(--hover); }
+.menu-ic { display: flex; color: var(--muted); }
+.menu-lb { flex: 1; }
+.menu-ck { display: none; color: var(--accent); }
+.menu-item.on .menu-ck { display: flex; }
+.menu-item.on .menu-ic { color: var(--accent); }
+.menu-sep { height: 1px; background: var(--line); margin: 5px 4px; }
 
 /* bottom-right map status (a Leaflet control between zoom and attribution) */
 .mstat {
@@ -115,8 +135,10 @@ body { background: var(--bg); color: var(--text); font-family: var(--font); }
 .mstat-v { color: var(--text); text-align: right; }
 .mstat-warn { color: #ffb86b; }
 
-/* top-right vertical toolbar */
+/* top-right vertical toolbar; an open portal card takes the corner and the
+   toolbar steps to its left (card width + gap) */
 .toolbar { position: absolute; top: 10px; right: 10px; z-index: 1000; display: flex; flex-direction: column; gap: 6px; }
+body:has(.pd:not([hidden])) .toolbar { right: calc(10px + min(330px, 100vw - 20px) + 8px); }
 .tb-item { position: relative; }
 .tb-btn {
   display: flex; align-items: center; justify-content: center;
@@ -154,7 +176,8 @@ body { background: var(--bg); color: var(--text); font-family: var(--font); }
 .tb-sel select:focus { border-color: var(--accent-dim); }
 
 @media (pointer: coarse) {
-  .who__logout { width: 36px; height: 36px; }
+  .who__menu { height: 38px; }
+  .menu-item { padding: 11px 10px; }
   .tb-btn { width: 44px; height: 44px; }
   .tb-panel { right: 50px; max-width: calc(100vw - 70px); }
   .tb-row { padding: 7px 0; }

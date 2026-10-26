@@ -1,7 +1,7 @@
-/* Docked left of the toolbar column, not under its button, so it never covers
-   the buttons below it. One map tool is open at a time. */
+/* Docked left under the identity plate, as in IITC. An expanded COMM (z 1000)
+   covers it. One map tool is open at a time. */
 .draw-panel {
-  position: fixed; top: 10px; right: 56px; z-index: 1000;
+  position: absolute; top: 62px; left: 10px; z-index: 990;
   display: flex; flex-direction: column; gap: 14px; padding: 6px;
   background: var(--panel-bg); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 6px 26px #000a;
 }
@@ -14,7 +14,6 @@
 .draw-color { padding: 0; }
 .draw-btn:hover { background: var(--hover); }
 .draw-btn.on { border-color: var(--accent); color: var(--accent); }
-.tb-btn.on { background: var(--accent-bg); border-color: var(--accent); color: var(--accent); }
 
 .draw-handle { background: #fff; border: 2px solid #ff2d2d; border-radius: 50%; cursor: move; }
 .draw-handle.draw-clone { border-color: var(--accent); cursor: copy; }
@@ -26,5 +25,4 @@
 
 @media (pointer: coarse) {
   .draw-btn, .draw-color { width: 40px; height: 40px; }
-  .draw-panel { right: 62px; }
 }

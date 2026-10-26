@@ -8,7 +8,7 @@
   background: var(--panel-bg); border: 1px solid var(--line); border-radius: 10px;
   box-shadow: 0 4px 20px #0007; font-size: 12px;
 }
-/* expanded: from the portal card's top edge (under the identity plate) down */
+/* expanded: from under the identity plate down, over the draw panel */
 .comm--open { width: 460px; top: 62px; }
 .comm-head { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-bottom: 1px solid var(--line); }
 .comm-title { font-weight: 700; letter-spacing: 0.08em; color: var(--accent); margin-right: auto; }
@@ -25,12 +25,12 @@
 .comm-toggle:hover, .comm-fac:hover { color: var(--accent); border-color: var(--accent-dim); }
 
 /* rows sit at the bottom, newest last (auto margin keeps the list scrollable) */
-.comm-list { display: flex; flex-direction: column; padding: 3px 0; height: calc(var(--row) * 3); overflow: hidden; }
-.comm-list > :first-child { margin-top: auto; }
-.comm--open .comm-list {
-  flex: 1 1 auto; height: auto; min-height: 0; overflow: auto;
+.comm-list {
+  display: flex; flex-direction: column; padding: 3px 0; height: calc(var(--row) * 3); overflow: auto;
   scrollbar-width: thin; scrollbar-color: var(--line) transparent;
 }
+.comm-list > :first-child { margin-top: auto; }
+.comm--open .comm-list { flex: 1 1 auto; height: auto; min-height: 0; }
 .comm-row {
   display: flex; gap: 6px; align-items: baseline; flex: none;
   height: var(--row); line-height: var(--row); padding: 0 8px; white-space: nowrap;

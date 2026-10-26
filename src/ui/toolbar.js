@@ -1,11 +1,10 @@
-// Top-right vertical toolbar. Items stack in mount order: layers, favorites,
-// draw tools.
+// Top-right toolbar (now just the layers button; it moves left of an open
+// portal card). Items stack in mount order.
 //   addToolbarButton — button + side panel. On a mouse the panel opens on hover
 //     (kept open while over the icon or the panel, closes hideDelay ms after
 //     leaving both) and a click pins/unpins it. On touch, mouseenter fires on
 //     tap and would leave panels stuck open, so there the button is a plain
 //     toggle and a tap outside closes it.
-//   addToolbarAction — a plain button (opens a modal, toggles a tool).
 export const coarsePointer = matchMedia('(pointer: coarse)').matches;
 
 function getToolbar(container) {
@@ -47,10 +46,4 @@ export function addToolbarButton(container, { icon, title, hideDelay = 1000 }) {
   // click pins/unpins regardless of hover
   btn.addEventListener('click', () => { clearTimeout(t); t = null; panel.hidden = !panel.hidden; });
   return { item, btn, panel };
-}
-
-export function addToolbarAction(container, { icon, title, onClick }) {
-  const r = makeItem(container, { icon, title });
-  r.btn.addEventListener('click', onClick);
-  return r;
 }

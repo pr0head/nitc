@@ -1,4 +1,4 @@
-// Favorites: toolbar star → modal with the starred portals, sorted by title.
+// Favorites: menu item → modal with the starred portals, sorted by title.
 // Clicking one re-fetches /portals/{id}, refreshes the stored copy, centres the
 // map on it and opens its card. Starring happens in the portal card header.
 //
@@ -10,16 +10,15 @@ import { getPortal } from '../api/intel.js';
 import { adaptPortalDetail } from '../adapter/model.js';
 import { favorites, favLabel } from '../state/favorites.js';
 import { bus } from '../state/bus.js';
-import { addToolbarAction } from '../ui/toolbar.js';
 import { createListModal, confirmBox, alertBox } from '../ui/dialog.js';
 import { esc } from '../ui/esc.js';
 import { STAR, TRASH } from '../ui/icons.js';
 
 const OPEN_ZOOM = 15;
 
-export function mountFavorites(container, engine) {
+export function mountFavorites(menu, engine) {
   const modal = createListModal('Избранное');
-  addToolbarAction(container, { icon: STAR(18), title: 'Избранное', onClick: open });
+  menu.add({ icon: STAR(16), label: 'Избранное', onClick: open });
 
   function open() { renderList(); modal.open(); }
   bus.on('favoritesChanged', () => { if (modal.isOpen) renderList(); });

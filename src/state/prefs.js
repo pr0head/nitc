@@ -13,6 +13,7 @@ function defaults() {
     highlight: { top: 'none', bottom: 'none', text: 'none', fieldArea: false, fieldMu: false },
     // COMM panel: event group filter, faction toggles, expanded or compact
     comm: { kind: 'all', res: true, enl: true, open: false },
+    draw: false, // draw tools switched on (plate menu)
   };
 }
 
@@ -28,6 +29,7 @@ function load() {
     if (s.highlight) Object.assign(d.highlight, s.highlight); // migrate: prefs saved before highlight existed
     if (s.view && Array.isArray(s.view.center)) d.view = s.view;
     if (s.comm) Object.assign(d.comm, s.comm);
+    if (typeof s.draw === 'boolean') d.draw = s.draw;
   } catch { /* defaults */ }
   return d;
 }
@@ -41,6 +43,7 @@ export const prefs = {
   get highlight() { return state.highlight; },
   get view() { return state.view || null; }, // last {center:[lat,lng], zoom}
   get comm() { return state.comm; },
+  get draw() { return state.draw; },
   set(patch) {
     state = { ...state, ...patch };
     this.save();

@@ -1,7 +1,11 @@
-// The map view: full-screen Leaflet with floating overlays —
-//   top-left    : identity plate (brand + email + logout); portal card under it
-//   bottom-left : COMM (activity log of the visible area)
-//   top-right   : toolbar — layers, favorites, draw tools
+// The map view: full-screen Leaflet with floating overlays, laid out the way
+// IITC players expect: map tools on the left, information on the right.
+//   top-left    : identity plate — "☰ NITC" menu (plugins, account) + email;
+//                 always on top. Draw tools panel under it, when switched on
+//   bottom-left : COMM (activity log of the visible area); expanded, it covers
+//                 the draw panel
+//   top-right   : layers button; the portal card docks in the corner and the
+//                 button moves to its left while the card is open
 //   bottom-right: my location, zoom, map status (what is shown, load state), attribution
 import { createMap } from '../map/engine.js';
 import { logout } from '../api/auth.js';
@@ -16,10 +20,17 @@ import { mountDrawTools } from '../plugins/draw-tools.js';
 import { createMapStatus } from './map-status.js';
 import { mountComm } from './comm.js';
 import { mountLocate } from './locate.js';
+import { createMenu } from './menu.js';
+import { confirmBox } from './dialog.js';
 import { esc } from './esc.js';
 
 const LOGOUT_ICON =
-  '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>';
+  '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>';
+const PHONE_ICON =
+  '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="2"/><line x1="11" y1="18" x2="13" y2="18"/></svg>';
+const APK_URL = 'https://github.com/pr0head/nitc/releases/latest';
+// the Android shell appends this to its user agent
+const inAndroidApp = /NITC-Android/.test(navigator.userAgent);
 
 // Leaving the map (logout, or a 401 from a revoked token) reloads the page:
 // every overlay, listener and cache goes with it, and boot shows the login.
@@ -30,9 +41,7 @@ export function showApp(root) {
     <div class="app">
       <div class="map" id="map"></div>
       <div class="who">
-        <span class="who__brand">NITC</span>
         <span class="who__me" title="Вход по email — ник появится, когда API отдаст профиль">${esc(session.email) || 'agent'}</span>
-        <button class="who__logout" type="button" title="Выйти">${LOGOUT_ICON}</button>
       </div>
     </div>`;
 
@@ -48,18 +57,29 @@ export function showApp(root) {
     onPortalClick: (p) => bus.emit('portalClick', p),
   });
 
-  // toolbar order follows mount order
+  // the card and the layers button share the top-right corner: keep the card
+  // above the bottom-right stack (location, zoom, status)
+  const br = mapEl.querySelector('.leaflet-bottom.leaflet-right');
+  new ResizeObserver(() => document.documentElement.style.setProperty('--br-h', br.offsetHeight + 'px')).observe(br);
+
+  // menu items follow mount order: plugins, then the account section
+  const menu = createMenu(root.querySelector('.who'));
   mountLayers(app, engine);
-  mountFavorites(app, engine);
-  mountPlans(engine);
-  mountDrawTools(app, engine);
+  mountPlans(engine); // before draw tools: they open the last plan
+  mountDrawTools(app, engine, menu);
+  mountFavorites(menu, engine);
   mountPortalCard(engine);
   mountComm(app, engine);
 
-  root.querySelector('.who__logout').addEventListener('click', async () => {
-    if (!confirm(`Выйти из аккаунта${session.email ? ' ' + session.email : ''}?`)) return;
-    await logout();
-    leave();
+  menu.sep();
+  if (!inAndroidApp) menu.add({ icon: PHONE_ICON, label: 'Приложение для Android', href: APK_URL });
+  menu.add({
+    icon: LOGOUT_ICON, label: 'Выйти',
+    onClick: async () => {
+      if (!(await confirmBox(`Выйти из аккаунта${session.email ? ' ' + session.email : ''}?`, 'Выйти'))) return;
+      await logout();
+      leave();
+    },
   });
 
   engine.load(); // initial viewport

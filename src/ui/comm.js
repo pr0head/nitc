@@ -1,9 +1,9 @@
 // COMM: the activity log of the visible area, docked bottom-left.
 // Chat order: oldest at the top, newest at the bottom.
-//   compact  — filter + the 3 latest events, fixed height
-//   expanded — from the card's top edge down to the bottom, a scrolling list;
-//              scrolling up loads older pages (until the server has no more),
-//              new events arrive at the bottom
+//   compact  — 3 rows high, opens on the latest events
+//   expanded — from under the identity plate down to the bottom
+// Both scroll: scrolling up loads older pages (until the server has no more),
+// new events arrive at the bottom.
 // The box never resizes with its content: a new area clears the list and
 // shows the state line in the same space.
 //
@@ -31,7 +31,6 @@ import { coarsePointer } from './toolbar.js';
 import { esc } from './esc.js';
 import { errText } from './errors.js';
 
-const COMPACT_ROWS = 3;
 const OPEN_ZOOM = MAP.minPortalZoom; // a clicked portal opens where portals are visible
 const GROUP = {
   capture: 'capture', neutralize: 'capture',
@@ -79,8 +78,7 @@ export function mountComm(container, engine) {
   const listEl = el.querySelector('.comm-list');
   const toggleBtn = el.querySelector('.comm-toggle');
 
-  // The compact height for the layout: the portal card keeps clear of it (and
-  // lies over an expanded feed); on phones the bottom-right controls sit above it.
+  // The compact height for the layout: on phones the bottom-right controls sit above it.
   new ResizeObserver(() => {
     if (!st.open) document.documentElement.style.setProperty('--comm-compact-h', el.offsetHeight + 'px');
   }).observe(el);
@@ -225,13 +223,15 @@ export function mountComm(container, engine) {
 
   const note = (html, cls = '') => `<div class="comm-note ${cls}">${html}</div>`;
 
-  // State line: alone in an empty list, or above the rows (expanded: older
-  // pages; any mode: an error that kept the old rows).
-  function stateLine(hasRows) {
+  // State lines. No rows: one line says why. With rows: the older-pages line
+  // heads the list, and an error that kept the old rows sits under the newest
+  // (where the list rests, so it is seen).
+  function emptyLine() {
     if (loading) return note('загрузка…');
     if (err) return note(esc(err), 'comm-err');
-    if (!hasRows) return note(items.length ? 'нет событий под фильтр' : 'событий в этой области нет');
-    if (!st.open) return '';
+    return note(items.length ? 'нет событий под фильтр' : 'событий в этой области нет');
+  }
+  function olderLine() {
     if (loadingOlder) return note('загрузка старых…');
     if (next) return note('<button type="button" class="comm-more">загрузить ещё</button>');
     return note('больше событий нет');
@@ -247,16 +247,15 @@ export function mountComm(container, engine) {
     el.querySelectorAll('.comm-fac').forEach((b) => b.classList.toggle('off', !st[b.dataset.f]));
 
     const { scrollTop, scrollHeight, clientHeight } = listEl;
-    const atEnd = scrollHeight - scrollTop - clientHeight < 30;
+    const atEnd = scrollHeight - scrollTop - clientHeight < 8;
 
-    let rows = visible(); // newest first
-    const line = stateLine(rows.length > 0);
-    if (!st.open) rows = rows.slice(0, line ? COMPACT_ROWS - 1 : COMPACT_ROWS);
-    listEl.innerHTML = line + rows.reverse().map((ev) =>
+    const rows = loading ? [] : visible(); // newest first
+    listEl.innerHTML = !rows.length ? emptyLine() : olderLine() + rows.reverse().map((ev) =>
       `<div class="comm-row" data-id="${esc(ev.id)}" title="${esc(plain(ev))}">` +
       `<span class="comm-time">${fmtTime(ev.time)}</span>` +
       `<span class="comm-nick" style="color:${fcol(ev.faction)}">${esc(ev.nick)}</span>` +
-      `<span class="comm-msg">${message(ev)}</span></div>`).join('');
+      `<span class="comm-msg">${message(ev)}</span></div>`).join('') +
+      (err ? note(esc(err), 'comm-err') : '');
 
     if (anchor === 'end' || atEnd) listEl.scrollTop = listEl.scrollHeight;
     else if (anchor === 'older') listEl.scrollTop = listEl.scrollHeight - (scrollHeight - scrollTop);
@@ -273,9 +272,9 @@ export function mountComm(container, engine) {
   toggleBtn.addEventListener('click', () => {
     st.open = !st.open; prefs.save(); paint('end');
   });
-  // expanded: reaching the top loads the next older page
+  // reaching the top loads the next older page
   listEl.addEventListener('scroll', () => {
-    if (st.open && listEl.scrollTop < 80) older();
+    if (listEl.scrollTop < 80) older();
   });
 
   // portal name → centre on it (zoomed in enough to show portals) + its card

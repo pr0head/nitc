@@ -1,7 +1,8 @@
 // Draw tools: a drawing layer over the map (line / triangle), with colour,
 // clone, edit (drag vertices), snap to portals, delete, clear and IITC
-// DrawTools JSON import/export. Toolbar icon under favorites: click to open
-// (shows the tool panel + drawings), click again to hide both (drawings kept).
+// DrawTools JSON import/export. Switched on and off from the plate menu (the
+// state is remembered): on shows the tool panel, docked left as in IITC, and
+// the drawings; off hides both (drawings kept).
 //
 // Clone copies a shape past one of its vertices: click a vertex and the other
 // vertices stay put — how nested fields over a shared base get drawn. It then
@@ -21,14 +22,13 @@ import { bus, tools } from '../state/bus.js';
 import { prefs } from '../state/prefs.js';
 import { plans } from './plans.js';
 import { ringArea, fmtArea } from '../map/geo.js';
-import { addToolbarAction } from '../ui/toolbar.js';
 import { confirmBox, promptBox, alertBox } from '../ui/dialog.js';
 import { esc } from '../ui/esc.js';
 
 const DRAW = ['line', 'triangle'];
 const svg = (s, body) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
 const I = {
-  draw: svg(18, '<path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/>'),
+  draw: svg(16, '<path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/>'),
   line: svg(16, '<circle cx="5" cy="19" r="2"/><circle cx="19" cy="5" r="2"/><line x1="6.5" y1="17.5" x2="17.5" y2="6.5"/>'),
   tri: svg(16, '<polygon points="12,4 20,20 4,20"/>'),
   clone: svg(16, '<polygon points="9,2 16,14 2,14"/><polygon points="15,10 22,22 8,22"/>'),
@@ -44,7 +44,7 @@ const I = {
   newPlan: svg(16, '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M12 8v8M8 12h8"/>'),
 };
 
-export function mountDrawTools(container, engine) {
+export function mountDrawTools(container, engine, menu) {
   const map = engine.map;
   // Own pane above the portals, so shapes and vertex handles stay on top after
   // portals re-render, with its own renderer so map re-renders never restack
@@ -68,12 +68,14 @@ export function mountDrawTools(container, engine) {
   // setTool(null) drops a half-drawn shape and redraws
   bus.on('drawLoad', (arr) => { model = Array.isArray(arr) ? arr : []; setTool(null); });
 
-  // ---- toolbar button + panel ----
-  const { item, btn } = addToolbarAction(container, {
-    icon: I.draw, title: 'Рисование', onClick: () => (active ? deactivate() : activate()),
+  // ---- menu item + panel ----
+  menu.add({
+    icon: I.draw, label: 'Рисование', isOn: () => active,
+    onClick: () => (active ? deactivate() : activate()),
   });
   const panel = document.createElement('div'); panel.className = 'draw-panel'; panel.hidden = true;
-  item.append(panel);
+  container.append(panel);
+  L.DomEvent.disableClickPropagation(panel);
 
   const toolBtns = {};
   function section() { const s = document.createElement('div'); s.className = 'draw-sec'; panel.append(s); return s; }
@@ -110,12 +112,12 @@ export function mountDrawTools(container, engine) {
   // ---- activate / deactivate ----
   function activate() {
     tools.activate('draw'); // closes any other open map tool
-    active = true; btn.classList.add('on'); panel.hidden = false;
+    active = true; panel.hidden = false; prefs.set({ draw: true });
     model = plans.openLast(); // the plan last worked on, if any
     layer.addTo(map); redraw();
   }
   function deactivate() {
-    active = false; btn.classList.remove('on'); panel.hidden = true;
+    active = false; panel.hidden = true; prefs.set({ draw: false });
     cancelDraw(); setTool(null);
     map.removeLayer(layer); map.removeLayer(editLayer);
     tools.drawMode = false;
@@ -311,4 +313,6 @@ export function mountDrawTools(container, engine) {
     if (!(await confirmBox(msg, 'Очистить'))) return;
     model = []; save(); redraw();
   }
+
+  if (prefs.draw) activate(); // it was on when the page was left
 }

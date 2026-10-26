@@ -1,4 +1,4 @@
-// Portal card: click a portal → GET /portals/{id} → a card docked top-left:
+// Portal card: click a portal → GET /portals/{id} → a card docked top-right:
 // photo, a stats grid, the 4 mod slots and the 8 resonators as a compass rose.
 //
 // Links/fields counts are NOT in the card — they come from the loaded map data

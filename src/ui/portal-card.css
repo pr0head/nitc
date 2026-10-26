@@ -1,10 +1,10 @@
-/* Portal card, docked top-left under the identity plate. */
+/* Portal card, docked top-right as in IITC (the layers button moves to its left). */
 .pd {
-  position: fixed; left: 10px; top: 62px; z-index: 1050;
-  /* stops short of the compact COMM feed below; an expanded feed goes under it
-     (--comm-compact-h: the feed's compact height, ~110px until first measured) */
+  position: fixed; right: 10px; top: 10px; z-index: 1050;
+  /* stops above the bottom-right stack: location, zoom, map status
+     (--br-h: its live height, ~160px until first measured) */
   width: 330px; max-width: calc(100vw - 20px); overflow: auto;
-  max-height: calc(100vh - 92px - var(--comm-compact-h, 110px));
+  max-height: calc(100vh - 30px - var(--br-h, 160px));
   background: var(--panel-bg); border: 1px solid var(--line); border-radius: 10px;
   box-shadow: 0 6px 26px #000a; font-size: 13px; color: var(--text);
   scrollbar-width: thin; scrollbar-color: var(--line) transparent;
@@ -94,4 +94,4 @@
   .pd-rchip { height: 52px; }
 }
 /* leave the map usable: don't let the card eat a phone screen */
-@media (max-width: 520px) { .pd { max-height: 58vh; } }
+@media (max-width: 520px) { .pd { top: 62px; max-height: 58vh; } } /* under the plate */
