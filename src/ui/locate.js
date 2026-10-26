@@ -4,6 +4,7 @@
 // The position stays in the page: it is never sent anywhere.
 import L from 'leaflet';
 import { MAP } from '../config.js';
+import { alertBox } from './dialog.js';
 
 const ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/></svg>';
 const COLOR = '#4da3ff';
@@ -50,12 +51,17 @@ export function mountLocate(engine, { centerOnStart = true } = {}) {
     btn.classList.add('on'); btn.title = 'Моё местоположение';
     if (pending) { map.setView(pos, pending === 'button' ? BUTTON_ZOOM : map.getZoom()); pending = null; }
   }
+  // silent at startup; after a button press say why nothing happened
   function onError(e) {
+    const asked = pending === 'button';
     pending = null;
     if (e.code === e.PERMISSION_DENIED) {
       stop();
       btn.classList.remove('on');
-      btn.title = 'Геопозиция запрещена в настройках браузера';
+      btn.title = 'Доступ к геопозиции запрещён';
+      if (asked) alertBox('Доступ к геопозиции запрещён. Разрешите его в настройках браузера или приложения.');
+    } else if (asked && !pos) {
+      alertBox('Не удалось определить местоположение. Попробуйте ещё раз.');
     }
   }
 
