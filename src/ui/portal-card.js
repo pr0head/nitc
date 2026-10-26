@@ -6,11 +6,13 @@
 // (engine.getData()), so they cover what the current viewport loaded.
 //
 // Selection on the map: the portal's own outline turns red (engine), plus the
-// 40 m action circle and, for a fully deployed portal, its max link range.
+// 40 m action circle and, for a fully deployed portal, its max link range
+// (a circle on the sphere: for hundreds of km a projected circle is off).
 import L from 'leaflet';
 import './portal-card.css';
 import { GAME } from '../config.js';
 import { fcol, ll } from '../map/render.js';
+import { geodesicCircle } from '../map/geo.js';
 import { getPortal } from '../api/intel.js';
 import { adaptPortalDetail } from '../adapter/model.js';
 import * as G from '../game/portal.js';
@@ -229,8 +231,8 @@ export function mountPortalCard(engine) {
     }
     engine.setSelected(p.id); // repaint: this portal strokes red
   }
-  // L.circle's radius is in metres: at street zoom a long link range is
-  // millions of pixels across, so skip it when it can't be on screen anyway
+  // at street zoom a long link range is millions of pixels across, so skip it
+  // when it can't be on screen anyway
   function rangePx(sp) {
     const c = map.latLngToLayerPoint([sp.lat, sp.lng]);
     const e = map.latLngToLayerPoint([sp.lat + sp.m / 111320, sp.lng]);
@@ -245,12 +247,10 @@ export function mountPortalCard(engine) {
       rangeCircle?.remove(); rangeCircle = null;
       return;
     }
-    if (rangeCircle) {
-      rangeCircle.setLatLng([rangeSpec.lat, rangeSpec.lng]).setRadius(rangeSpec.m);
-      return;
-    }
-    rangeCircle = L.circle([rangeSpec.lat, rangeSpec.lng], {
-      radius: rangeSpec.m, fill: false, color: SEL_COL, weight: 1.5, opacity: 0.85, dashArray: '5,5', ...OV,
+    const ring = geodesicCircle([rangeSpec.lat, rangeSpec.lng], rangeSpec.m);
+    if (rangeCircle) { rangeCircle.setLatLngs(ring); return; }
+    rangeCircle = L.polygon(ring, {
+      fill: false, color: SEL_COL, weight: 1.5, opacity: 0.85, dashArray: '5,5', ...OV,
     }).addTo(map);
   }
   map.on('zoomend', applyRange);

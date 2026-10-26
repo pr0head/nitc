@@ -15,13 +15,16 @@
 // Geometry belongs to a plan: every save is announced as 'drawChanged' and the
 // plans module persists it; a plan switch hands shapes back via 'drawLoad'.
 //
+// Shapes are drawn along great circles, like the links they plan (the stored
+// vertices are unchanged).
+//
 // Format = IITC DrawTools JSON: [{type:'polyline'|'polygon', latLngs:[{lat,lng}], color?}]
 import L from 'leaflet';
 import './draw-tools.css';
 import { bus, tools } from '../state/bus.js';
 import { prefs } from '../state/prefs.js';
 import { plans } from './plans.js';
-import { ringArea, fmtArea } from '../map/geo.js';
+import { ringArea, fmtArea, geodesicPath } from '../map/geo.js';
 import { confirmBox, promptBox, alertBox } from '../ui/dialog.js';
 import { esc } from '../ui/esc.js';
 
@@ -171,7 +174,9 @@ export function mountDrawTools(container, engine, menu) {
   function updateTemp() {
     temp?.remove();
     temp = L.layerGroup().addTo(map);
-    if (pts.length > 1) L.polyline(pts, { color, weight: 2, dashArray: '4,4', interactive: false, ...OV }).addTo(temp);
+    if (pts.length > 1) {
+      L.polyline(geodesicPath(pts.map((p) => [p.lat, p.lng])), { color, weight: 2, dashArray: '4,4', interactive: false, ...OV }).addTo(temp);
+    }
     pts.forEach((p) => L.marker(p, {
       interactive: false, keyboard: false, pane: PANE,
       icon: L.divIcon({ className: 'draw-vtx', iconSize: [12, 12] }),
@@ -192,7 +197,8 @@ export function mountDrawTools(container, engine, menu) {
       // in this raised pane would swallow clicks meant for the portals under
       // it, exactly the ones new vertices snap to
       const opts = { color: s.color || '#ff2d2d', weight: 2, interactive: active && tool === 'delete', ...OV };
-      const el = s.type === 'polygon' ? L.polygon(lls, { fillOpacity: 0.08, ...opts }) : L.polyline(lls, opts);
+      const geo = geodesicPath(lls, s.type === 'polygon');
+      const el = s.type === 'polygon' ? L.polygon(geo, { fillOpacity: 0.08, ...opts }) : L.polyline(geo, opts);
       el.on('click', (ev) => {
         if (active && tool === 'delete') { L.DomEvent.stop(ev); model.splice(idx, 1); save(); redraw(); }
       });
@@ -229,7 +235,7 @@ export function mountDrawTools(container, engine, menu) {
       h.on('drag', (ev) => {
         const p = ev.target.getLatLng();
         s.latLngs[vi] = { lat: p.lat, lng: p.lng };
-        shapeLayers[si]?.setLatLngs(s.latLngs.map((q) => [q.lat, q.lng]));
+        shapeLayers[si]?.setLatLngs(geodesicPath(s.latLngs.map((q) => [q.lat, q.lng]), s.type === 'polygon'));
       });
       // redraw, not just save: the area label is a separate marker
       h.on('dragend', () => { save(); redraw(); });

@@ -25,6 +25,7 @@ import { MAP, FACTION } from '../config.js';
 import { getActivity } from '../api/intel.js';
 import { adaptEvent } from '../adapter/model.js';
 import { fcol } from '../map/render.js';
+import { geodesicPath } from '../map/geo.js';
 import { prefs } from '../state/prefs.js';
 import { bus } from '../state/bus.js';
 import { coarsePointer } from './toolbar.js';
@@ -320,9 +321,9 @@ export function mountComm(container, engine) {
     const pts = ev.portals.filter(okLL).map((p) => [p.lat, p.lng]);
     const g = GROUP[ev.kind];
     if (g === 'link' && pts.length >= 2) {
-      L.polyline(pts.slice(0, 2), { color: col, weight: 3, opacity: 0.95, dashArray: '6,5', ...OV }).addTo(hl);
+      L.polyline(geodesicPath(pts.slice(0, 2)), { color: col, weight: 3, opacity: 0.95, dashArray: '6,5', ...OV }).addTo(hl);
     } else if (g === 'field' && pts.length >= 3) {
-      L.polygon(pts.slice(0, 3), { color: col, weight: 2, dashArray: '6,5', fillColor: col, fillOpacity: 0.15, ...OV }).addTo(hl);
+      L.polygon(geodesicPath(pts.slice(0, 3), true), { color: col, weight: 2, dashArray: '6,5', fillColor: col, fillOpacity: 0.15, ...OV }).addTo(hl);
     }
     for (const p of pts) {
       L.circleMarker(p, { radius: 12, color: col, weight: 3, opacity: 0.95, fill: false, ...OV }).addTo(hl);
