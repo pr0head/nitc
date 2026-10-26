@@ -20,6 +20,7 @@ import { coarsePointer } from './toolbar.js';
 import { esc } from './esc.js';
 import { STAR } from './icons.js';
 import { agentLink } from './agent-card.js';
+import { keys } from '../state/keys.js';
 
 const SEL_COL = '#ff2d2d';
 // short slot labels; the label colour is the rarity
@@ -251,7 +252,12 @@ export function mountPortalCard(engine) {
   bus.on('openPortal', ({ portal, detail }) => openPortal(portal, detail));
 
   // ---- render ----
+  // the key line follows the key set: re-render the open card when it loads
+  let shown = null;
+  bus.on('keysChanged', () => { if (shown && !panel.hidden && shown.id === cur?.id) render(shown); });
+
   function render(d) {
+    shown = d;
     const col = fcol(d.faction);
     setTitle(levelOf(d), d.name, col);
     // the card is the authoritative name/position — star and circle what it says
@@ -289,6 +295,14 @@ export function mountPortalCard(engine) {
     ];
     parts.push('<div class="pd-stats">' + rows.map(([k, v]) =>
       `<div class="pd-st"><span class="pd-sk">${k}</span><span class="pd-sv">${v}</span></div>`).join('') + '</div>');
+
+    // own keys to this portal: free ones can be spent on a link, the rest sit
+    // in capsules. "нет" only once the whole key set is in.
+    const k = keys.get(d.id);
+    const keyText = k ? `${k.qty}` + (k.inCaps ? ` <span class="pd-muted">(${k.free} своб. + ${k.inCaps} в капсулах)</span>` : '')
+      : keys.ready ? '<span class="pd-muted">нет</span>'
+      : keys.state === 'loading' ? '<span class="pd-muted">загрузка…</span>' : '<span class="pd-muted">неизвестно</span>';
+    parts.push(`<div class="pd-keys"><span class="pd-sk">Ключи</span> ${keyText}</div>`);
 
     // mod slots: 4 fixed columns, label coloured by rarity, owner underneath
     parts.push(`<div class="pd-h">Моды ${mods.length}/4</div>`);

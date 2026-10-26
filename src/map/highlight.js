@@ -1,8 +1,9 @@
 // Highlight rules (IITC/SBG-style). Each rule is a predicate over an adapted
 // portal from the bulk /map response — no per-portal fetch. Only data the map
 // endpoint already carries is usable here: level, resonator_count, current/max
-// XM — plus the local favorites list.
+// XM — plus the local favorites list and the own keys set.
 import { favorites } from '../state/favorites.js';
+import { keys } from '../state/keys.js';
 
 export const TOP_COLOR = '#b061ff'; // purple, like the SBG top arc
 export const BOT_COLOR = '#ff9f40'; // orange, like the SBG bottom arc
@@ -17,10 +18,12 @@ export const ARC_OPTS = [
   ['freeslots', 'Свободные слоты'],
   ['weak', 'Слабый портал'],
   ['favorite', 'Избранное'],
+  ['keys', 'Есть ключ'],
 ];
 export const TEXT_OPTS = [
   ['none', 'Нет'],
   ['level', 'Уровень'],
+  ['keys', 'Ключи'],
 ];
 
 const claimed = (p) => p.faction !== 'neu';
@@ -30,6 +33,7 @@ function arcFn(kind) {
     case 'freeslots': return (p) => claimed(p) && p.resoCount < 8;
     case 'weak': return (p) => p.xm.max > 0 && p.xm.cur / p.xm.max <= WEAK_XM;
     case 'favorite': return (p) => favorites.has(p.id);
+    case 'keys': return (p) => keys.qty(p.id) > 0;
     default: return null;
   }
 }
@@ -38,6 +42,8 @@ function textFn(kind) {
   switch (kind) {
     // unclaimed portals stay blank: a "0" on every neutral dot is noise
     case 'level': return (p) => (claimed(p) ? String(p.level) : '');
+    // the key count; blank where there is none
+    case 'keys': return (p) => { const q = keys.qty(p.id); return q ? String(q) : ''; };
     default: return null;
   }
 }

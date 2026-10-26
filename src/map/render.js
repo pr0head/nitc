@@ -7,9 +7,10 @@
 //   links toggle  → standalone links AND the 3 edges of every field
 //   portals       → fixed-size dot, black outline; selected = thicker red outline
 //   corner portals (link/field ends with no portal data) → smaller dot under
-//                   the portals; faction filter only (no level to filter by)
+//                   the portals; faction and key filters only (no level to filter by)
 import L from 'leaflet';
 import { FACTION } from '../config.js';
+import { keys } from '../state/keys.js';
 
 export const fcol = (id) => FACTION[id]?.color || FACTION.neu.color;
 export const ll = (p) => p && Number.isFinite(p.lat) && Number.isFinite(p.lng);
@@ -24,7 +25,10 @@ const factionOn = (f, fac) => (fac === 'res' ? !!f.res : fac === 'enl' ? !!f.enl
 // Shared visibility predicates — the renderer and the highlight overlay must
 // agree on exactly what is shown. Unclaimed portals obey only their own toggle
 // (no level/faction filter); claimed ones obey level (clamped 1..8) + faction.
+// "only portals with a key" applies on top, once the key set is loaded.
+const keyOk = (p, f) => !f.keysOnly || !keys.ready || keys.qty(p.id) > 0;
 export function portalVisible(p, f) {
+  if (!keyOk(p, f)) return false;
   if (p.faction === 'neu') return !!f.neutral;
   const lvl = Math.max(1, Math.min(8, p.level || 1));
   return !!f.levels[lvl] && factionOn(f, p.faction);
@@ -75,7 +79,7 @@ export function render(groups, data, { onPortalClick, selectedId, filters: f, st
 
   // a click opens the regular card: the id is real, /portals/{id} has the rest
   for (const p of data.corners || []) {
-    if (!ll(p) || !factionOn(f, p.faction)) continue;
+    if (!ll(p) || !factionOn(f, p.faction) || !keyOk(p, f)) continue;
     const sel = p.id === selectedId;
     L.circleMarker([p.lat, p.lng], {
       radius: CORNER_R,

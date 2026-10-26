@@ -18,6 +18,8 @@ import { mountPortalCard } from './portal-card.js';
 import { mountFavorites } from '../plugins/favorites.js';
 import { mountPlans } from '../plugins/plans.js';
 import { mountDrawTools } from '../plugins/draw-tools.js';
+import { mountInventory } from '../plugins/inventory.js';
+import { keys } from '../state/keys.js';
 import { createMapStatus } from './map-status.js';
 import { mountComm } from './comm.js';
 import { mountLocate } from './locate.js';
@@ -74,10 +76,12 @@ export function showApp(root) {
   mountPlans(engine); // before draw tools: they open the last plan
   mountDrawTools(app, engine, menu);
   mountFavorites(menu, engine);
+  mountInventory(menu, engine);
   mountPortalCard(engine);
   mountComm(app, engine);
   mountScore(app);
   mountAgentCard();
+  keys.start(); // own key set: card line, key highlight/filter, inventory
   showMe(root.querySelector('.who__me'));
 
   menu.sep();

@@ -39,3 +39,14 @@ export function getAgent({ id, nick }, signal) {
     : `/v1/intel/agents?${new URLSearchParams({ nickname: nick })}`;
   return api.get(q, { signal });
 }
+
+// GET /v1/intel/me/keys[?cursor=…] — own keys, 128 portals per page (no-store)
+export function getKeys(cursor, signal) {
+  const q = cursor ? `?cursor=${encodeURIComponent(cursor)}` : '';
+  return api.get('/v1/intel/me/keys' + q, { signal });
+}
+
+// GET /v1/intel/me/inventory — own items by kind and level (no-store)
+export function getInventory(signal) {
+  return api.get('/v1/intel/me/inventory', { signal });
+}

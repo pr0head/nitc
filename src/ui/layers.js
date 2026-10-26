@@ -32,6 +32,8 @@ export function mountLayers(container, engine) {
   sep(col2);
   check(col2, FACTION.res.name, () => f.res, (v) => engine.setFilter({ res: v }), FACTION.res.color);
   check(col2, FACTION.enl.name, () => f.enl, (v) => engine.setFilter({ enl: v }), FACTION.enl.color);
+  sep(col2);
+  check(col2, 'Только с ключами', () => f.keysOnly, (v) => engine.setFilter({ keysOnly: v }));
 
   // column 1, below the base maps: highlight overlay
   const h = engine.prefs.highlight;
