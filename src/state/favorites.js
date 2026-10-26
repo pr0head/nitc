@@ -123,22 +123,28 @@ export const favorites = {
       })),
     };
   },
-  // a group with the same name is merged into, else created; → added counts
+  // a group with the same name is merged into, else created; a nameless one
+  // (IITC's "Others") puts its portals in no group; → added counts.
+  // Takes our format or an IITC bookmarks export (see fromIitc).
   importGroups(data) {
-    if (data?.type !== 'nitc-favorites' || !Array.isArray(data.groups)) throw new Error('format');
+    const src = data?.type === 'nitc-favorites' && Array.isArray(data.groups) ? data.groups
+      : data?.portals && typeof data.portals === 'object' ? fromIitc(data.portals) : null;
+    if (!src) throw new Error('format');
     let nG = 0, nP = 0;
-    for (const src of data.groups) {
-      const name = String(src?.name || '').trim();
-      if (!name) continue;
-      let g = groups.find((x) => x.name === name);
-      if (!g) { g = makeGroup(name); groups.push(g); nG++; }
-      for (const p of Array.isArray(src.portals) ? src.portals : []) {
+    for (const s of src) {
+      const name = String(s?.name || '').trim();
+      let g = null;
+      if (name) {
+        g = groups.find((x) => x.name === name);
+        if (!g) { g = makeGroup(name); groups.push(g); nG++; }
+      }
+      for (const p of Array.isArray(s.portals) ? s.portals : []) {
         if (p?.id == null || !Number.isFinite(+p.lat) || !Number.isFinite(+p.lng)) continue;
         const f = this.get(p.id);
         if (f) {
-          if (!f.groups.includes(g.id)) { f.groups.push(g.id); nP++; }
+          if (g && !f.groups.includes(g.id)) { f.groups.push(g.id); nP++; }
         } else {
-          model.push({ id: p.id, title: String(p.title || ''), lat: +p.lat, lng: +p.lng, groups: [g.id] });
+          model.push({ id: p.id, title: String(p.title || ''), lat: +p.lat, lng: +p.lng, groups: g ? [g.id] : [] });
           nP++;
         }
       }
@@ -147,3 +153,20 @@ export const favorites = {
     return { groups: nG, portals: nP };
   },
 };
+
+// IITC bookmarks: {portals:{folderId:{label, bkmrk:{id:{guid, latlng:"lat,lng", label}}}}}
+// ("maps" — view bookmarks — have no counterpart and are skipped). A folder
+// becomes a group by its label, "idOthers" holds the unfiled ones. The guid
+// is the portal UUID without dashes plus ".16"; it is taken as is — a stale
+// one simply won't open, and the user removes it.
+const GUID = /^([0-9a-f]{8})([0-9a-f]{4})([0-9a-f]{4})([0-9a-f]{4})([0-9a-f]{12})\.16$/i;
+function fromIitc(folders) {
+  return Object.entries(folders).map(([fid, folder]) => ({
+    name: fid === 'idOthers' ? '' : folder?.label,
+    portals: Object.values(folder?.bkmrk || {}).map((b) => {
+      const m = GUID.exec(String(b?.guid || ''));
+      const [lat, lng] = String(b?.latlng || '').split(',');
+      return m && { id: m.slice(1).join('-').toLowerCase(), title: b.label, lat, lng };
+    }).filter(Boolean),
+  }));
+}

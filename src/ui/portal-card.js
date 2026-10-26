@@ -329,8 +329,20 @@ export function mountPortalCard(engine) {
 
     if (d.photoUrl) parts.push(`<img class="pd-photo" src="${esc(d.photoUrl)}" alt="" loading="lazy" referrerpolicy="no-referrer">`);
 
-    // stats: 8 figures in two columns (the grid fills column-first)
+    // own keys to this portal: free ones can be spent on a link, the rest sit
+    // in capsules (the breakdown in the tooltip). "—" only once the whole key
+    // set is in; "…" while it loads, "?" if it couldn't be loaded.
+    const k = keys.get(d.id);
+    const keyCell = k
+      ? [`${k.qty}` + (k.inCaps ? ` <span class="pd-muted">(${k.inCaps} в капс.)</span>` : ''),
+        `свободных ${k.free}, в капсулах ${k.inCaps}`]
+      : keys.ready ? [dash, 'ключей нет']
+      : keys.state === 'loading' ? ['<span class="pd-muted">…</span>', 'ключи загружаются']
+      : ['<span class="pd-muted">?</span>', 'ключи не загрузились'];
+
+    // stats: 9 figures in two columns (the grid fills column-first)
     const rows = [
+      ['Ключи', ...keyCell],
       ['Владелец', d.owner ? agentLink(d.owner, { color: col }) : dash],
       ['AP за снос', String(G.destroyAp(d, g))],
       ['Линки', `${g.inc} вх / ${g.out} исх` +
@@ -341,16 +353,8 @@ export function mountPortalCard(engine) {
       ['Хаки', `${G.hacks(d)} · ${G.cooldownS(d)}с`],
       ['Энергия', en.max ? `${fmtK(en.cur)} / ${fmtK(en.max)}` : dash],
     ];
-    parts.push('<div class="pd-stats">' + rows.map(([k, v]) =>
-      `<div class="pd-st"><span class="pd-sk">${k}</span><span class="pd-sv">${v}</span></div>`).join('') + '</div>');
-
-    // own keys to this portal: free ones can be spent on a link, the rest sit
-    // in capsules. "нет" only once the whole key set is in.
-    const k = keys.get(d.id);
-    const keyText = k ? `${k.qty}` + (k.inCaps ? ` <span class="pd-muted">(${k.free} своб. + ${k.inCaps} в капсулах)</span>` : '')
-      : keys.ready ? '<span class="pd-muted">нет</span>'
-      : keys.state === 'loading' ? '<span class="pd-muted">загрузка…</span>' : '<span class="pd-muted">неизвестно</span>';
-    parts.push(`<div class="pd-keys"><span class="pd-sk">Ключи</span> ${keyText}</div>`);
+    parts.push('<div class="pd-stats">' + rows.map(([k, v, tip]) =>
+      `<div class="pd-st"${tip ? ` title="${tip}"` : ''}><span class="pd-sk">${k}</span><span class="pd-sv">${v}</span></div>`).join('') + '</div>');
 
     // mod slots: 4 fixed columns, label coloured by rarity, owner underneath
     parts.push(`<div class="pd-h">Моды ${mods.length}/4</div>`);

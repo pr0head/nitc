@@ -40,13 +40,12 @@
 /* 8 figures in 2 columns; grid-auto-flow:column keeps 1-4 left, 5-8 right */
 .pd-stats {
   display: grid; grid-auto-flow: column; grid-template-columns: 1fr 1fr;
-  grid-template-rows: repeat(4, auto); gap: 2px 12px; margin: 2px 0;
+  grid-template-rows: repeat(5, auto); gap: 2px 12px; margin: 2px 0;
 }
 .pd-st { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; min-width: 0; }
 .pd-sk { color: var(--muted); font-size: 12px; flex: none; }
 .pd-sv { font-size: 12px; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pd-sv s { color: var(--dim); }
-.pd-keys { font-size: 12px; margin: 3px 0 0; }
 
 /* mod slots */
 .pd-slots { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin: 2px 0 4px; }

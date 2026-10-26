@@ -5,14 +5,17 @@
 //   - a portal may sit in several groups; "Без группы" holds the rest and has
 //     an eye of its own
 //   - search filters every group by portal name
-//   - "+ группа" and "импорт" (JSON from another NITC) at the top
+//   - "+ группа" and "импорт" (JSON from another NITC, or an IITC bookmarks
+//     export) at the top
 // Group membership is set from the portal card (the ▾ next to its star).
 //
 // Clicking a portal re-fetches /portals/{id}, refreshes the stored copy,
 // centres the map on it and opens its card. Fetch on click, not in the
 // background: a list may hold hundreds of portals and renames/moves are rare,
 // so syncing the whole list would burn the request budget for nothing. A 404
-// means the portal is gone: say so and drop it rather than fly to a hole.
+// (the portal is gone, or the id came stale from an import) still centres the
+// map on the stored position and says so; the entry stays — removing it is
+// the user's call.
 import './favorites.css';
 import { getPortal } from '../api/intel.js';
 import { adaptPortalDetail } from '../adapter/model.js';
@@ -155,14 +158,14 @@ export function mountFavorites(menu, engine) {
   }
 
   async function importJson() {
-    const raw = await promptBox('Вставьте JSON группы избранного:', '', 'Импорт');
+    const raw = await promptBox('Вставьте JSON группы избранного NITC или экспорт закладок IITC:', '', 'Импорт');
     if (!raw) return;
     let data;
     try { data = JSON.parse(raw); } catch { alertBox('Некорректный JSON'); return; }
     try {
       const r = favorites.importGroups(data);
       alertBox(`Готово: новых групп ${r.groups}, добавлено порталов ${r.portals}.`);
-    } catch { alertBox('Это не группа избранного NITC.'); }
+    } catch { alertBox('Это не избранное NITC и не закладки IITC.'); }
   }
 
   let busy = false;
@@ -183,8 +186,10 @@ export function mountFavorites(menu, engine) {
       bus.emit('openPortal', { portal: { ...d, lat, lng }, detail: d });
     } catch (err) {
       if (err?.code === 'portal_not_found' || err?.code === 'not_found') {
-        favorites.remove(f.id);
-        await alertBox(`«${favLabel(f)}» больше не существует и убран из избранного.`);
+        modal.close();
+        if (Number.isFinite(f.lat) && Number.isFinite(f.lng)) engine.map.setView([f.lat, f.lng], OPEN_ZOOM);
+        await alertBox(`Портал «${favLabel(f)}» не найден на сервере. Карта показывает место, где он был сохранён; ` +
+          'если это ошибка в данных, уберите его из избранного.');
       } else {
         await alertBox('Не удалось загрузить портал: ' + (err?.code || err?.message || err));
       }
