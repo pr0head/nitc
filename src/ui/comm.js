@@ -29,6 +29,7 @@ import { prefs } from '../state/prefs.js';
 import { bus } from '../state/bus.js';
 import { coarsePointer } from './toolbar.js';
 import { esc } from './esc.js';
+import { errText } from './errors.js';
 
 const COMPACT_ROWS = 3;
 const OPEN_ZOOM = MAP.minPortalZoom; // a clicked portal opens where portals are visible
@@ -113,9 +114,7 @@ export function mountComm(container, engine) {
   function fail(e, my) {
     if (e?.name === 'AbortError' || my !== gen) return;
     if (e?.code === 'unauthorized') { location.reload(); return; }
-    err = e?.code === 'rate_limited'
-      ? `лимит запросов${e.retryAfter ? ` · ${e.retryAfter}с` : ''}`
-      : `ошибка: ${e?.code || 'request_failed'}`;
+    err = errText(e?.code, e?.retryAfter);
   }
 
   async function first() {

@@ -9,7 +9,7 @@ const ERRORS = {
   invalid_credentials: 'Неверный email или пароль.',
   invalid_input: 'Проверьте email и пароль.',
   rate_limited: 'Слишком много попыток. Повторите позже.',
-  origin_denied: 'Домен не разрешён сервером Netgress.',
+  origin_denied: 'Сервер отклонил запрос. Попробуйте позже.',
   network: 'Сеть недоступна. Проверьте соединение.',
 };
 

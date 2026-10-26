@@ -16,6 +16,20 @@ export class ApiError extends Error {
   }
 }
 
+// A failed fetch() says nothing about why: the browser hides a CORS refusal
+// behind the same TypeError as a dead network. Tell them apart with a no-cors
+// probe — it skips the CORS check, so it succeeds whenever the server answers
+// at all; then the real request was refused (origin not allowed), not lost.
+async function whyFailed() {
+  if (navigator.onLine === false) return 'network';
+  try {
+    await fetch(API_BASE + '/', { mode: 'no-cors', cache: 'no-store', signal: AbortSignal.timeout(5000) });
+    return 'origin_denied';
+  } catch {
+    return 'network';
+  }
+}
+
 // path-keyed ETag cache for GETs: { etag, data }. 304 → return cached data.
 const etagCache = new Map();
 
@@ -49,7 +63,8 @@ async function request(method, path, { body, signal, auth = true, etag = false }
     });
   } catch (e) {
     if (e?.name === 'AbortError') throw e; // let callers ignore stale aborts
-    throw new ApiError('network', 'Сеть недоступна');
+    const code = await whyFailed();
+    throw new ApiError(code, code === 'network' ? 'Сеть недоступна' : 'Сервер отклонил запрос');
   }
 
   if (res.status === 304 && cached) return cached.data;

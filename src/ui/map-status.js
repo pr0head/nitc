@@ -7,6 +7,8 @@
 //   карта    готово · z17 | загрузка… | ошибка … | лимит запросов
 // A layer cut at the per-response cap gets "обрезано". On loading/error the
 // last good counts stay, so the panel never blanks out.
+import { errText } from './errors.js';
+
 const fmtLen = (m) => (m >= 1000 ? `${+(m / 1000).toFixed(1)} км` : `${m} м`);
 
 export function createMapStatus() {
@@ -41,10 +43,7 @@ export function createMapStatus() {
     const z = s.zoom != null ? ` · z${s.zoom}` : '';
     if (s.loading) return paint({ text: 'загрузка…' + z });
     if (s.error) {
-      const text = s.error === 'rate_limited'
-        ? `лимит запросов${s.retryAfter ? ` · ${s.retryAfter}с` : ''}`
-        : `ошибка: ${s.error}`;
-      return paint({ text, warn: true });
+      return paint({ text: errText(s.error, s.retryAfter), warn: true });
     }
     last = s;
     paint({ text: 'готово' + z });
