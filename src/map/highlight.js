@@ -32,7 +32,8 @@ function arcFn(kind) {
   switch (kind) {
     case 'freeslots': return (p) => claimed(p) && p.resoCount < 8;
     case 'weak': return (p) => p.xm.max > 0 && p.xm.cur / p.xm.max <= WEAK_XM;
-    case 'favorite': return (p) => favorites.has(p.id);
+    // only portals of the groups whose eye is on (favorites window)
+    case 'favorite': return (p) => favorites.highlighted(p.id);
     case 'keys': return (p) => keys.qty(p.id) > 0;
     default: return null;
   }

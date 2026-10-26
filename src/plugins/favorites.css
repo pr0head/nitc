@@ -1,0 +1,61 @@
+/* Favorites modal: search bar, collapsible groups. */
+.fav-box { width: 380px; max-height: min(80vh, 680px); }
+.fav-bar { display: flex; gap: 6px; padding: 2px 4px 8px; }
+.fav-search {
+  flex: 1; min-width: 0; padding: 6px 8px; background: var(--input); border: 1px solid var(--line);
+  border-radius: 6px; color: var(--text); font: 13px var(--font);
+}
+.fav-search:focus { outline: none; border-color: var(--accent-dim); }
+.fav-act {
+  flex: none; padding: 0 9px; background: none; border: 1px solid var(--line); border-radius: 6px;
+  color: var(--accent); font: 12px var(--font); cursor: pointer; white-space: nowrap;
+}
+.fav-act:hover { border-color: var(--accent-dim); }
+
+.fav-g + .fav-g { border-top: 1px solid var(--line); }
+.fav-gh { display: flex; align-items: center; gap: 6px; padding: 6px 4px; }
+.fav-caret {
+  flex: none; display: flex; width: 22px; height: 22px; align-items: center; justify-content: center;
+  background: none; border: 0; color: var(--muted); cursor: pointer; transition: transform 0.12s;
+}
+.fav-caret.on { transform: rotate(90deg); }
+.fav-gname { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+.fav-gcount { flex: none; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; margin-right: 2px; }
+.fav-ic {
+  flex: none; display: flex; width: 26px; height: 26px; align-items: center; justify-content: center;
+  background: none; border: 0; border-radius: 6px; color: var(--dim); cursor: pointer;
+}
+.fav-ic:hover { background: var(--hover); color: var(--text); }
+.fav-ic.on { color: var(--accent); }
+.fav-ic.off { color: var(--dim); }
+.fav-del:hover { background: #2a1416; color: #ff9aa5; }
+.fav-items { padding: 0 0 6px 22px; }
+.fav-empty { padding: 4px 9px 8px; font-size: 12px; color: var(--dim); }
+
+@media (pointer: coarse) {
+  .fav-ic { width: 36px; height: 36px; }
+  .fav-caret { width: 32px; height: 32px; }
+}
+
+/* portal card: group picker under the star */
+.pd-groups-btn {
+  background: none; border: 0; padding: 0 2px; flex: none; color: var(--dim); cursor: pointer;
+  display: flex; align-items: center;
+}
+.pd-groups-btn:hover, .pd-groups-btn.on { color: var(--text); }
+.pd-groups-btn[hidden] { display: none !important; }
+.pd-groups {
+  position: absolute; right: 8px; top: calc(100% + 4px); z-index: 2; min-width: 210px; max-width: 280px; padding: 5px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 6px 22px #000a;
+}
+.pd-groups[hidden] { display: none !important; }
+.pd-gi { display: flex; align-items: center; gap: 8px; padding: 5px 7px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+.pd-gi:hover { background: var(--hover); }
+.pd-gi input[type="checkbox"] { accent-color: var(--accent); margin: 0; }
+.pd-gi span.nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pd-gnew {
+  width: 100%; margin-top: 4px; padding: 5px 7px; background: var(--input); border: 1px solid var(--line);
+  border-radius: 6px; color: var(--text); font: 12px var(--font);
+}
+.pd-gnew:focus { outline: none; border-color: var(--accent-dim); }
+.pd-gempty { padding: 4px 7px; font-size: 12px; color: var(--dim); }

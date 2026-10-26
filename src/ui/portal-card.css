@@ -78,6 +78,12 @@
 
 .pd-coords { margin-top: 10px; color: var(--muted); font-size: 12px; }
 .pd-coords a { color: var(--accent); text-decoration: none; }
+.pd-copy {
+  display: inline-flex; vertical-align: -2px; margin-left: 5px; padding: 0;
+  background: none; border: 0; color: var(--dim); cursor: pointer;
+}
+.pd-copy:hover { color: var(--text); }
+.pd-copy.done { color: var(--accent); }
 
 /* instant tooltip */
 .pd-tip {

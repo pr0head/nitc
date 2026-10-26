@@ -58,6 +58,8 @@ const ROSE = [7, 0, 1, 6, null, 2, 5, 4, 3];
 // beyond this many pixels the range circle is far off-screen and only costs
 // rasterising, so it isn't drawn
 const MAX_RANGE_PX = 6000;
+const COPY = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>';
+const CARET_DOWN = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
 
 const fmtK = (n) => (n >= 10000 ? Math.round(n / 1000) + 'k'
   : n >= 1000 ? (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k' : String(Math.round(n)));
@@ -72,12 +74,16 @@ export function mountPortalCard(engine) {
   panel.innerHTML =
     '<div class="pd-head"><div class="pd-title"></div>' +
     `<button type="button" class="pd-fav" title="В избранное">${STAR(17)}</button>` +
-    '<button type="button" class="pd-close" title="Закрыть">×</button></div>' +
+    `<button type="button" class="pd-groups-btn" title="Группы избранного">${CARET_DOWN}</button>` +
+    '<button type="button" class="pd-close" title="Закрыть">×</button>' +
+    '<div class="pd-groups" hidden></div></div>' +
     '<div class="pd-body"></div>';
   document.body.append(panel);
   const titleEl = panel.querySelector('.pd-title');
   const bodyEl = panel.querySelector('.pd-body');
   const favBtn = panel.querySelector('.pd-fav');
+  const groupsBtn = panel.querySelector('.pd-groups-btn');
+  const groupsEl = panel.querySelector('.pd-groups');
 
   // ---- title: long names ellipsise, so mirror the text into a tooltip ----
   function setTitle(level, name, color) {
@@ -111,16 +117,49 @@ export function mountPortalCard(engine) {
   // ---- favorite toggle: reflects/flips the flag of the open portal ----
   let cur = null; // { id, name, lat, lng } of the open portal
   function paintFav() {
-    favBtn.hidden = !cur;
+    favBtn.hidden = groupsBtn.hidden = !cur;
     const on = !!(cur && favorites.has(cur.id));
     favBtn.classList.toggle('on', on);
     favBtn.title = on ? 'Убрать из избранного' : 'В избранное';
+    if (!groupsEl.hidden) paintGroups();
   }
   favBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     if (cur) favorites.toggle(cur);
   });
   bus.on('favoritesChanged', paintFav);
+
+  // ---- group picker (▾): tick groups; ticking one stars the portal ----
+  function paintGroups() {
+    const f = cur && favorites.get(cur.id);
+    const gs = favorites.groups();
+    groupsEl.innerHTML = (gs.length ? gs.map((g) =>
+      `<label class="pd-gi"><input type="checkbox" data-g="${g.id}"${f && f.groups.includes(g.id) ? ' checked' : ''}>` +
+      `<span class="nm">${esc(g.name)}</span></label>`).join('')
+      : '<div class="pd-gempty">Групп пока нет</div>') +
+      '<input type="text" class="pd-gnew" placeholder="+ новая группа (Enter)" maxlength="60">';
+  }
+  function setGroupsOpen(open) {
+    groupsEl.hidden = !open;
+    groupsBtn.classList.toggle('on', open);
+    if (open) paintGroups();
+  }
+  groupsBtn.addEventListener('click', (e) => { e.stopPropagation(); setGroupsOpen(groupsEl.hidden); });
+  groupsEl.addEventListener('change', (e) => {
+    const box = e.target.closest('input[type="checkbox"]');
+    if (box && cur) favorites.setInGroup(cur, box.dataset.g, box.checked);
+  });
+  groupsEl.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' || !e.target.closest('.pd-gnew') || !cur) return;
+    const name = e.target.value.trim();
+    if (!name) return;
+    const g = favorites.addGroup(name);
+    favorites.setInGroup(cur, g.id, true);
+    groupsEl.querySelector('.pd-gnew')?.focus();
+  });
+  document.addEventListener('click', (e) => {
+    if (!groupsEl.hidden && !groupsEl.contains(e.target) && e.target !== groupsBtn) setGroupsOpen(false);
+  });
 
   // ---- body interactions: agent links, share; tips on resonator/mod slots ----
   const TIPPED = '.pd-rchip, .pd-slabel[data-tip]';
@@ -141,6 +180,14 @@ export function mountPortalCard(engine) {
         showTip(t.getBoundingClientRect(), t.dataset.tip, t.classList.contains('pd-slabel'));
         return;
       }
+    }
+    const c = e.target.closest('.pd-copy');
+    if (c) {
+      navigator.clipboard?.writeText(c.dataset.copy).then(() => {
+        c.classList.add('done'); c.title = 'Скопировано';
+        setTimeout(() => { c.classList.remove('done'); c.title = 'Скопировать координаты'; }, 1200);
+      }, () => {});
+      return;
     }
     const s = e.target.closest('.pd-share');
     if (s) {
@@ -214,6 +261,7 @@ export function mountPortalCard(engine) {
   }
 
   function close() {
+    setGroupsOpen(false);
     panel.hidden = true; tapped = null; hideTip(); clearSel();
     inflight?.abort();
     cur = null; paintFav();
@@ -337,12 +385,12 @@ export function mountPortalCard(engine) {
       }).join('') + '</div>');
     } else parts.push('<div class="pd-muted">не установлены</div>');
 
-    // coords · external map · share link (#p= deep link)
+    // coords (+ copy) · share link (#p= deep link)
     if (ll(d)) {
       const lat = d.lat.toFixed(6), lng = d.lng.toFixed(6);
       const share = `${location.origin}${location.pathname}#p=${encodeURIComponent(d.id)},${lat},${lng}`;
       parts.push(`<div class="pd-coords">${lat}, ${lng}` +
-        ` · <a href="https://yandex.ru/maps/?pt=${lng},${lat}&z=18&l=map" target="_blank" rel="noopener">карта</a>` +
+        `<button type="button" class="pd-copy" data-copy="${lat},${lng}" title="Скопировать координаты">${COPY}</button>` +
         ` · <a class="pd-share" href="${esc(share)}">ссылка</a></div>`);
     }
 
