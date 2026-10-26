@@ -177,5 +177,9 @@ export function adaptScore(j) {
     mu: { res: n(b.resistance_mu), enl: n(b.enlightened_mu) },
     pct: { res: n(b.resistance_percent), enl: n(b.enlightened_percent) },
     fields: n(b.active_fields),
+    processed: n(b.processed_fields),
+    pending: n(b.pending_fields),
+    unresolved: n(b.unresolved_fields),
+    revision: n(b.revision),
   };
 }

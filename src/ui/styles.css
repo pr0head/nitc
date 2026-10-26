@@ -113,8 +113,25 @@ body { background: var(--bg); color: var(--text); font-family: var(--font); }
   position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 1000;
   display: flex; align-items: center; gap: 8px; padding: 6px 10px;
   background: rgba(16, 21, 22, 0.92); border: 1px solid var(--line); border-radius: 10px;
-  box-shadow: 0 4px 20px #0007; font-size: 12px; font-weight: 600; cursor: default;
+  box-shadow: 0 4px 20px #0007; font-size: 12px; font-weight: 600; cursor: pointer;
 }
+.score:hover { border-color: var(--accent-dim); }
+
+/* world score window */
+.sc-box { width: 360px; }
+.sc { padding: 4px 6px 8px; }
+.sc-fac { display: flex; align-items: baseline; gap: 8px; font-size: 13px; padding: 2px 0; }
+.sc-fac span { flex: 1; color: var(--muted); }
+.sc-fac b { font-variant-numeric: tabular-nums; }
+.sc-pct { flex: none !important; width: 46px; text-align: right; color: var(--text) !important; font-variant-numeric: tabular-nums; }
+.sc-bar { display: flex; gap: 2px; height: 10px; margin: 3px 0; border-radius: 5px; overflow: hidden; background: var(--input); }
+.sc-bar span { display: block; height: 100%; }
+.sc-warn { font-size: 12px; color: #ffb86b; margin: 6px 0 2px; }
+.sc-rows div { display: flex; justify-content: space-between; gap: 10px; font-size: 12px; padding: 2px 0; }
+.sc-rows span { color: var(--muted); }
+.sc-rows b { font-variant-numeric: tabular-nums; }
+.sc-rows .sc-sub { display: block; }
+.sc-sub { font-size: 11px; color: var(--dim); line-height: 1.45; }
 .score[hidden] { display: none !important; }
 .score-bar {
   display: flex; width: 160px; height: 8px; border-radius: 4px; overflow: hidden;
