@@ -99,5 +99,29 @@
   .pd-fav { width: 30px; height: 30px; }
   .pd-rchip { height: 52px; }
 }
-/* leave the map usable: don't let the card eat a phone screen */
-@media (max-width: 520px) { .pd { top: 62px; max-height: 58vh; } } /* under the plate */
+/* phones either way up: the figures come first, the photo follows them */
+@media (max-width: 560px), (max-height: 500px) {
+  .pd-body { display: flex; flex-direction: column; }
+  .pd-stats { order: -1; margin-bottom: 8px; }
+  .pd-photo { max-height: min(308px, 45vh); }
+}
+/* a phone on its side: the card hangs under the layers button, down to the
+   bottom (over the location button) */
+@media (max-height: 500px) and (min-width: 561px) {
+  .pd { top: 62px; max-height: calc(100dvh - 72px); }
+}
+/* upright phones: a bottom sheet across the width (portal-card.js sets its
+   height): low — the head and the figures, high — everything, under the plate */
+@media (max-width: 560px) {
+  .pd {
+    top: auto; left: 0; right: 0; bottom: 0; width: auto; max-width: none; max-height: none;
+    border-width: 1px 0 0; border-radius: 14px 14px 0 0; transition: height 0.18s ease;
+  }
+  .pd.pd--drag { transition: none; }
+  .pd.pd--low { overflow: hidden; }
+  .pd-head { padding-top: 16px; touch-action: none; border-radius: 14px 14px 0 0; }
+  .pd-head::before { /* the grip */
+    content: ''; position: absolute; top: 6px; left: 50%; width: 36px; height: 4px;
+    margin-left: -18px; border-radius: 2px; background: var(--line);
+  }
+}

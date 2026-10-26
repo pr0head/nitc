@@ -7,7 +7,7 @@ function defaults() {
   for (let n = 1; n <= 8; n++) levels[n] = true;
   return {
     baseMap: 'yandex',
-    filters: { levels, neutral: true, res: true, enl: true, links: true, fields: true, keysOnly: false },
+    filters: { levels, neutral: true, res: true, enl: true, links: true, fields: true },
     // Portal/field highlight overlay (IITC-style). Arc/text values are option
     // keys from map/highlight.js; unknown keys degrade to "no highlight".
     highlight: { top: 'none', bottom: 'none', text: 'none', fieldArea: false, fieldMu: false },

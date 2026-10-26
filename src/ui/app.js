@@ -78,8 +78,8 @@ export function showApp(root) {
   mountFavorites(menu, engine);
   mountInventory(menu, engine);
   mountPortalCard(engine);
-  mountComm(app, engine);
-  mountScore(app);
+  mountComm(app, engine, menu);
+  mountScore(app, menu);
   mountAgentCard();
   keys.start(); // own key set: card line, key highlight/filter, inventory
   showMe(root.querySelector('.who__me'));
@@ -122,10 +122,13 @@ async function showMe(el) {
 }
 
 // #p=<id>,<lat>,<lng> centres the map on a portal and opens its card (the
-// card's "ссылка" builds exactly this). Returns whether it did.
+// card's "ссылка" builds exactly this). Returns whether it did. The link is
+// used up: it leaves the address, so a reload after closing the card doesn't
+// open it again.
 function openDeepLink(engine) {
   const m = /[#&]p=([^,&]+),(-?[\d.]+),(-?[\d.]+)/.exec(location.hash);
   if (!m) return false;
+  history.replaceState(history.state, '', location.pathname + location.search);
   const id = decodeURIComponent(m[1]), lat = +m[2], lng = +m[3];
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
   engine.map.setView([lat, lng], Math.max(engine.map.getZoom(), 17));

@@ -32,6 +32,8 @@ import { coarsePointer } from './toolbar.js';
 import { esc } from './esc.js';
 import { errText } from './errors.js';
 import { agentLink } from './agent-card.js';
+import { backOpen, backClosed } from './back.js';
+import { phone } from './phone.js';
 
 const OPEN_ZOOM = MAP.minPortalZoom; // a clicked portal opens where portals are visible
 const GROUP = {
@@ -47,6 +49,7 @@ const KIND_LABEL = {
 };
 const KIND_OPTS = [['all', 'Все события'], ['capture', 'Захваты'], ['link', 'Линки'], ['field', 'Поля']];
 const EXPAND = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>';
+const COMM_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>';
 const COLLAPSE = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>';
 
 const pad = (n) => String(n).padStart(2, '0');
@@ -57,9 +60,12 @@ function fmtTime(ms) {
 }
 const okLL = (p) => Number.isFinite(p.lat) && Number.isFinite(p.lng);
 
-export function mountComm(container, engine) {
+export function mountComm(container, engine, menu) {
   const map = engine.map;
   const st = prefs.comm;
+  // a phone has no compact feed: COMM opens from the menu as a modal window
+  // over a shade, never by itself at start
+  if (phone.matches) st.open = false;
 
   const el = document.createElement('div');
   el.className = 'comm';
@@ -74,7 +80,10 @@ export function mountComm(container, engine) {
       '<button type="button" class="comm-toggle"></button>' +
     '</div>' +
     '<div class="comm-list"></div>';
-  container.append(el);
+  // the shade behind it on phones (CSS shows it only there); a tap folds COMM
+  const shade = document.createElement('div');
+  shade.className = 'comm-shade';
+  container.append(el, shade);
   L.DomEvent.disableClickPropagation(el);
   L.DomEvent.disableScrollPropagation(el);
   const listEl = el.querySelector('.comm-list');
@@ -244,8 +253,11 @@ export function mountComm(container, engine) {
   // otherwise keep the scroll position.
   function paint(anchor) {
     el.classList.toggle('comm--open', st.open);
-    toggleBtn.innerHTML = st.open ? COLLAPSE : EXPAND;
-    toggleBtn.title = st.open ? 'Свернуть' : 'Развернуть';
+    // a phone's modal closes like the other windows: ×
+    const close = st.open && phone.matches;
+    toggleBtn.classList.toggle('comm-close', close);
+    toggleBtn.innerHTML = close ? '&times;' : st.open ? COLLAPSE : EXPAND;
+    toggleBtn.title = close ? 'Закрыть' : st.open ? 'Свернуть' : 'Развернуть';
     el.querySelectorAll('.comm-fac').forEach((b) => b.classList.toggle('off', !st[b.dataset.f]));
 
     const { scrollTop, scrollHeight, clientHeight } = listEl;
@@ -255,8 +267,10 @@ export function mountComm(container, engine) {
     listEl.innerHTML = !rows.length ? emptyLine() : olderLine() + rows.reverse().map((ev) =>
       `<div class="comm-row" data-id="${esc(ev.id)}" title="${esc(plain(ev))}">` +
       `<span class="comm-time">${fmtTime(ev.time)}</span>` +
+      // the time stays put; a line too long for the width scrolls sideways
+      '<span class="comm-text">' +
       `<span class="comm-nick">${agentLink(ev.nick, { id: ev.actorId, color: fcol(ev.faction) })}</span>` +
-      `<span class="comm-msg">${message(ev)}</span></div>`).join('') +
+      `<span class="comm-msg">${message(ev)}</span></span></div>`).join('') +
       (err ? note(esc(err), 'comm-err') : '');
 
     if (anchor === 'end' || atEnd) listEl.scrollTop = listEl.scrollHeight;
@@ -271,9 +285,18 @@ export function mountComm(container, engine) {
   el.querySelectorAll('.comm-fac').forEach((b) => b.addEventListener('click', () => {
     st[b.dataset.f] = !st[b.dataset.f]; prefs.save(); paint('end');
   }));
-  toggleBtn.addEventListener('click', () => {
-    st.open = !st.open; prefs.save(); paint('end');
-  });
+  // expanded, it covers the map: Back folds it
+  const fold = () => setOpen(false);
+  function setOpen(open) {
+    if (open) backOpen(fold); else backClosed(fold);
+    if (st.open === open) return;
+    st.open = open; prefs.save(); paint('end');
+  }
+  if (st.open) backOpen(fold);
+  toggleBtn.addEventListener('click', () => setOpen(!st.open));
+  shade.addEventListener('click', fold);
+  phone.addEventListener('change', () => paint());
+  menu.add({ icon: COMM_ICON, label: 'COMM', onClick: () => setOpen(true) }).classList.add('menu-phone');
   // reaching the top loads the next older page
   listEl.addEventListener('scroll', () => {
     if (listEl.scrollTop < 80) older();
@@ -295,6 +318,7 @@ export function mountComm(container, engine) {
       const p = ev?.portals[+a.dataset.i];
       if (!p || !okLL(p)) return;
       keepUntil = Date.now() + 2000;
+      if (phone.matches) setOpen(false); // full screen there: show the map and the card
       map.setView([p.lat, p.lng], Math.max(map.getZoom(), OPEN_ZOOM));
       bus.emit('openPortal', { portal: { id: p.id, name: p.name, lat: p.lat, lng: p.lng } });
       return;

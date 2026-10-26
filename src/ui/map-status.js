@@ -36,6 +36,8 @@ export function createMapStatus() {
     }
     html += row('карта', map.text, map.warn);
     el.innerHTML = html;
+    // phones hide the panel unless something is wrong
+    el.classList.toggle('mstat--warn', !!map.warn || Object.values(t).some(Boolean));
   }
 
   // s: engine onStatus payload

@@ -6,6 +6,8 @@
   background: var(--panel-bg); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 6px 26px #000a;
 }
 .draw-panel[hidden] { display: none !important; }
+/* never past the screen (or an upright phone's portal sheet): the rest scrolls */
+.draw-panel { max-height: calc(100dvh - 72px - var(--sheet-h, 0px)); overflow-y: auto; }
 .draw-sec { display: flex; flex-direction: column; gap: 4px; }
 .draw-btn, .draw-color {
   width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
@@ -25,4 +27,13 @@
 
 @media (pointer: coarse) {
   .draw-btn, .draw-color { width: 40px; height: 40px; }
+}
+
+/* a low screen (a phone on its side): two buttons a row, the sections kept
+   apart by a rule so they still read as groups */
+@media (max-height: 500px) {
+  .draw-panel { gap: 8px; }
+  .draw-sec { display: grid; grid-template-columns: repeat(2, auto); }
+  .draw-sec + .draw-sec { border-top: 1px solid var(--line); padding-top: 8px; }
+  .draw-panel .draw-btn, .draw-panel .draw-color { width: 36px; height: 36px; }
 }

@@ -4,7 +4,9 @@
 //     (kept open while over the icon or the panel, closes hideDelay ms after
 //     leaving both) and a click pins/unpins it. On touch, mouseenter fires on
 //     tap and would leave panels stuck open, so there the button is a plain
-//     toggle and a tap outside closes it.
+//     toggle and a tap outside closes it, and Back closes an open panel.
+import { backOpen, backClosed } from './back.js';
+
 export const coarsePointer = matchMedia('(pointer: coarse)').matches;
 
 function getToolbar(container) {
@@ -33,9 +35,15 @@ export function addToolbarButton(container, { icon, title, hideDelay = 1000 }) {
     clearTimeout(t);
     t = setTimeout(() => { panel.hidden = true; t = null; }, hideDelay);
   };
+  // touch only: on a mouse the panel also opens and closes by hover
+  const close = () => setHidden(true);
+  function setHidden(h) {
+    panel.hidden = h;
+    if (coarsePointer) { if (h) backClosed(close); else backOpen(close); }
+  }
   if (coarsePointer) {
     document.addEventListener('click', (e) => {
-      if (!panel.hidden && !item.contains(e.target)) panel.hidden = true;
+      if (!panel.hidden && !item.contains(e.target)) close();
     });
   } else {
     btn.addEventListener('mouseenter', show);
@@ -44,6 +52,6 @@ export function addToolbarButton(container, { icon, title, hideDelay = 1000 }) {
     panel.addEventListener('mouseleave', scheduleHide);
   }
   // click pins/unpins regardless of hover
-  btn.addEventListener('click', () => { clearTimeout(t); t = null; panel.hidden = !panel.hidden; });
+  btn.addEventListener('click', () => { clearTimeout(t); t = null; setHidden(!panel.hidden); });
   return { item, btn, panel };
 }

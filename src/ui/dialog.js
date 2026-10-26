@@ -1,6 +1,7 @@
 // In-app dialogs and list modals. Our own instead of the browser's
 // confirm/prompt/alert: those block the page and look nothing like the UI.
 import './dialog.css';
+import { backOpen, backClosed } from './back.js';
 
 // → Promise: the field's text (prompt), true (confirm/alert OK), null (cancel).
 function openDialog({ message, okLabel = 'OK', cancel = true, initial = null }) {
@@ -18,7 +19,10 @@ function openDialog({ message, okLabel = 'OK', cancel = true, initial = null }) 
     const field = al.querySelector('.dlg-field');
     if (field) field.value = initial;
 
-    const done = (v) => { al.remove(); document.removeEventListener('keydown', onKey, true); resolve(v); };
+    const cancelIt = () => done(null);
+    const done = (v) => {
+      al.remove(); document.removeEventListener('keydown', onKey, true); backClosed(cancelIt); resolve(v);
+    };
     const accept = () => done(field ? field.value : true);
     // capture phase: Escape closes this dialog, not the modal underneath
     function onKey(e) {
@@ -30,6 +34,7 @@ function openDialog({ message, okLabel = 'OK', cancel = true, initial = null }) 
     al.querySelector('.dlg-cancel')?.addEventListener('click', () => done(null));
     al.addEventListener('click', (e) => { if (e.target === al) done(null); });
     document.body.append(al);
+    backOpen(cancelIt);
     if (field) { field.focus(); field.select(); } else ok.focus();
   });
 }
@@ -52,13 +57,16 @@ export function createListModal(title, cls = '') {
   if (cls) modal.querySelector('.lm-box').classList.add(cls);
   document.body.append(modal);
 
-  const close = () => { modal.hidden = true; };
+  const close = () => {
+    if (modal.hidden) return;
+    modal.hidden = true; backClosed(close);
+  };
   modal.querySelector('.lm-close').addEventListener('click', close);
   modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !modal.hidden) close(); });
   return {
     list: modal.querySelector('.lm-list'),
-    open() { modal.hidden = false; },
+    open() { modal.hidden = false; backOpen(close); },
     close,
     get isOpen() { return !modal.hidden; },
     setTitle(text) { modal.querySelector('.lm-h').textContent = text; },

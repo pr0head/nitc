@@ -167,7 +167,13 @@ body { background: var(--bg); color: var(--text); font-family: var(--font); }
 .score-st { position: absolute; inset: -4px 0; font-size: 10px; font-weight: 400; color: var(--muted); text-align: center; line-height: 16px; }
 .score-v { font-variant-numeric: tabular-nums; }
 /* no room between the plate and the card on narrow screens (mobile: later) */
-@media (max-width: 900px) { .score { display: none; } }
+/* narrow screens: no bar, the window opens from the menu */
+.menu-narrow { display: none !important; }
+@media (max-width: 900px) {
+  .score { display: none; }
+  .menu-item.menu-narrow { display: flex !important; }
+  .menu-sep.menu-narrow { display: block !important; }
+}
 
 .menu {
   position: absolute; top: calc(100% + 6px); left: 0; min-width: 220px; padding: 5px;
@@ -250,6 +256,28 @@ body:has(.pd:not([hidden])) .toolbar { right: calc(10px + min(330px, 100vw - 20p
 @media (max-width: 560px) {
   .tb-layers { flex-direction: column; gap: 10px; }
   .tb-col { min-width: 0; }
+  /* no room beside the button: the panel drops below it, clear of the plate */
+  .tb-panel { top: calc(100% + 8px); right: 0; max-width: calc(100vw - 20px); max-height: calc(100dvh - 80px); }
+}
+/* an open panel goes over the portal card and COMM (the plate stays on top) */
+.toolbar:has(.tb-panel:not([hidden])) { z-index: 1150; }
+/* on phones the portal card sits lower: the toolbar keeps its corner instead
+   of moving left of the card (under the plate or the score bar) */
+@media (max-width: 560px), (max-height: 500px) { body:has(.pd:not([hidden])) .toolbar { right: 10px; } }
+
+/* phones either way up (src/ui/phone.js): no zoom buttons (pinch), the map
+   status only when something is wrong; panels over the map are opaque */
+.menu-phone { display: none !important; }
+@media (max-width: 560px), (max-height: 500px) {
+  .menu-phone { display: flex !important; }
+  .leaflet-control-zoom { display: none; }
+  .mstat:not(.mstat--warn) { display: none; }
+  body .pd, body .comm.comm--open { background: var(--panel); }
+}
+/* upright: the location button rides above a low portal sheet (a high one
+   covers it) */
+@media (max-width: 560px) {
+  body:has(.pd:not([hidden])) .leaflet-bottom.leaflet-right { bottom: calc(min(var(--sheet-h, 0px), 45vh) + 10px); }
 }
 
 /* "my location" button (Leaflet bar, above zoom) */

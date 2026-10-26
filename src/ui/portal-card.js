@@ -23,6 +23,8 @@ import { esc } from './esc.js';
 import { STAR } from './icons.js';
 import { agentLink } from './agent-card.js';
 import { keys } from '../state/keys.js';
+import { backOpen, backClosed } from './back.js';
+import { narrow } from './phone.js';
 
 const SEL_COL = '#ff2d2d';
 // short slot labels; the label colour is the rarity
@@ -214,6 +216,69 @@ export function mountPortalCard(engine) {
   }
   panel.querySelector('.pd-close').addEventListener('click', close);
 
+  // ---- upright phones: a bottom sheet, low (the figures) or high (everything) ----
+  // Dragged by its head; a tap on the head flips low ↔ high, pulled below the
+  // low height it closes. --sheet-h is its height for the rest of the layout.
+  const headEl = panel.querySelector('.pd-head');
+  const TOP_GAP = 62; // under the plate
+  let sheet = 'low';
+  const highH = () => innerHeight - TOP_GAP;
+  // the head and the figures grid; before the card loads, a guess
+  function lowH() {
+    const st = bodyEl.querySelector('.pd-stats');
+    return Math.min(highH(), st ? st.offsetTop + st.offsetHeight + 12 : headEl.offsetHeight + 120);
+  }
+  function setSheetH(h) {
+    panel.style.height = h + 'px';
+    document.documentElement.style.setProperty('--sheet-h', h + 'px');
+  }
+  function setSheet(s) {
+    sheet = s;
+    panel.classList.toggle('pd--low', s === 'low');
+    if (s === 'low') panel.scrollTop = 0;
+    setSheetH(s === 'low' ? lowH() : highH());
+  }
+  // the portal stays in sight above the sheet
+  function keepInView(p) {
+    if (!ll(p)) return;
+    const y = map.latLngToContainerPoint([p.lat, p.lng]).y;
+    const bottom = innerHeight - lowH() - 24;
+    if (y > TOP_GAP && y < bottom) return;
+    map.panBy([0, y - (TOP_GAP + bottom) / 2]);
+  }
+  function unsheet() {
+    panel.style.height = ''; panel.classList.remove('pd--low', 'pd--drag');
+    document.documentElement.style.setProperty('--sheet-h', '0px');
+  }
+  narrow.addEventListener('change', () => { if (panel.hidden) return; if (narrow.matches) setSheet('low'); else unsheet(); });
+  addEventListener('resize', () => { if (!panel.hidden && narrow.matches) setSheet(sheet); });
+
+  let drag = null; // { y, h, moved }
+  headEl.addEventListener('pointerdown', (e) => {
+    if (!narrow.matches || e.target.closest('button, input, label, .pd-groups')) return;
+    drag = { y: e.clientY, h: panel.offsetHeight, moved: false };
+    headEl.setPointerCapture(e.pointerId);
+  });
+  headEl.addEventListener('pointermove', (e) => {
+    if (!drag) return;
+    const dy = drag.y - e.clientY;
+    if (!drag.moved && Math.abs(dy) < 6) return;
+    drag.moved = true;
+    panel.classList.add('pd--drag');
+    setSheetH(Math.max(40, Math.min(highH(), drag.h + dy)));
+  });
+  const endDrag = () => {
+    if (!drag) return;
+    const { moved } = drag; drag = null;
+    panel.classList.remove('pd--drag');
+    if (!moved) { setSheet(sheet === 'low' ? 'high' : 'low'); return; }
+    const h = panel.offsetHeight, low = lowH();
+    if (h < low * 0.6) close();
+    else setSheet(h > (low + highH()) / 2 ? 'high' : 'low');
+  };
+  headEl.addEventListener('pointerup', endDrag);
+  headEl.addEventListener('pointercancel', endDrag);
+
   // ---- selection overlays: own pane above the portals, click-through ----
   map.createPane('nitcSelection');
   map.getPane('nitcSelection').style.zIndex = 650;
@@ -261,8 +326,10 @@ export function mountPortalCard(engine) {
   }
 
   function close() {
+    backClosed(close);
     setGroupsOpen(false);
     panel.hidden = true; tapped = null; hideTip(); clearSel();
+    unsheet();
     inflight?.abort();
     cur = null; paintFav();
     engine.setSelected(null);
@@ -274,10 +341,12 @@ export function mountPortalCard(engine) {
   // adapted card (favorites has one in hand), which skips a duplicate request
   async function openPortal(p, detail) {
     panel.hidden = false; tapped = null; hideTip();
+    backOpen(close);
     selectPortal(p);
     cur = { id: p.id, name: p.name, lat: p.lat, lng: p.lng }; paintFav();
     setTitle(p.faction ? levelOf(p) : null, p.name, p.faction ? fcol(p.faction) : '');
     bodyEl.innerHTML = '<div class="pd-muted">загрузка…</div>';
+    if (narrow.matches) { setSheet('low'); keepInView(p); }
     const my = ++reqId;
     inflight?.abort(); inflight = null;
     if (detail) { render(detail); return; }
@@ -401,6 +470,7 @@ export function mountPortalCard(engine) {
     tapped = null; // the chips are rebuilt below
     bodyEl.innerHTML = parts.join('');
     bodyEl.querySelector('.pd-photo')?.addEventListener('error', (e) => e.target.remove());
+    if (narrow.matches && sheet === 'low') setSheet('low'); // the figures are in: fit them
   }
 
   return { openPortal, close };

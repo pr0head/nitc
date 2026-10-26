@@ -27,6 +27,9 @@ const TIERS = ['не получена', 'Bronze', 'Silver', 'Gold', 'Platinum', 
 const CREDIT = '<div class="ag-credit">Значки: DabelCODY, ' +
   '<a href="https://github.com/cr0ybot/ingress-logos" target="_blank" rel="noopener">ingress-logos</a>, ' +
   '<a href="https://creativecommons.org/licenses/by-nc-sa/3.0/" target="_blank" rel="noopener">CC BY-NC-SA 3.0</a></div>';
+// the medal details line keeps its room while empty: a tap shows them
+// without the card growing a scrollbar
+const HINT = 'Нажмите на медаль — уровень, прогресс и описание';
 const METRIC = {
   hacks: 'Хаки',
   resonators_deployed: 'Установлено резонаторов',
@@ -102,8 +105,8 @@ export function mountAgentCard() {
       const on = !md.classList.contains('sel');
       modal.list.querySelectorAll('.ag-medal.sel').forEach((x) => x.classList.remove('sel'));
       md.classList.toggle('sel', on);
-      det.textContent = on ? md.dataset.det : '';
-      det.hidden = !on;
+      det.textContent = on ? md.dataset.det : HINT;
+      det.classList.toggle('ag-hint', !on);
       return;
     }
     const b = e.target.closest('.seg button');
@@ -176,7 +179,7 @@ export function mountAgentCard() {
         const det = [m.title, TIERS[m.tier] || '', prog].filter(Boolean).join(' · ') + (m.desc ? ' — ' + m.desc : '');
         return `<div class="ag-medal${m.tier > 0 ? '' : ' ag-none'}" title="${esc(det)}" data-det="${esc(det)}">` +
           `${medalSvg(m.id, m.tier, m.title)}<span>${esc(m.title)}</span></div>`;
-      }).join('') + '</div><div class="ag-mdet" hidden></div>' + CREDIT));
+      }).join('') + `</div><div class="ag-mdet ag-hint">${HINT}</div>` + CREDIT));
     }
 
     // lifetime statistics by section, only what the server tracks; coverage in

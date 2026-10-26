@@ -28,6 +28,7 @@ import { esc } from './esc.js';
 const POLL_MS = 60000;
 const RATING_TTL_MS = 60000;
 const TITLE = 'Мировой счёт MU';
+const SCORE_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="20" x2="6" y2="13"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="18" y1="20" x2="18" y2="9"/></svg>';
 const STATUS = {
   empty: 'нет активных полей',
   partial: 'подсчёт…',
@@ -57,7 +58,7 @@ function plural(n, one, few, many) {
   return a >= 11 && a <= 14 ? many : b === 1 ? one : b >= 2 && b <= 4 ? few : many;
 }
 
-export function mountScore(container) {
+export function mountScore(container, menu) {
   const el = document.createElement('div');
   el.className = 'score';
   el.hidden = true; // until the first answer
@@ -89,13 +90,17 @@ export function mountScore(container) {
   }
 
   // ---- window: tabs above, the pane below ----
-  el.addEventListener('click', () => {
+  // opened by the bar, or by the menu where the bar is hidden (narrow screens)
+  el.addEventListener('click', openWindow);
+  menu.sep().classList.add('menu-narrow');
+  menu.add({ icon: SCORE_ICON, label: 'Счёт и рейтинг', onClick: openWindow }).classList.add('menu-narrow');
+  function openWindow() {
     modal.list.innerHTML = '<div class="seg sc-tabs">' + TABS.map(([k, t]) =>
       `<button type="button" data-tab="${k}"${k === tab ? ' class="on"' : ''}>${t}</button>`).join('') +
       '</div><div class="sc-pane"></div>';
     modal.open();
     show(tab);
-  });
+  }
 
   function show(k) {
     tab = k;

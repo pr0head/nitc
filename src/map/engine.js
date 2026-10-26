@@ -183,7 +183,7 @@ export function createMap(el, { onStatus, onPortalClick, onUnauthorized, statusE
 
   // a starred portal may carry the "favorite" arc
   bus.on('favoritesChanged', paint);
-  bus.on('keysChanged', paint); // key arcs/counts and the "with a key" filter
+  bus.on('keysChanged', paint); // key arcs and counts
 
   // periodic refresh, paused when the tab is hidden
   let timer = setInterval(() => { if (!document.hidden) load(); }, MAP.refreshMs);

@@ -9,10 +9,9 @@
 //   links and field edges follow great circles (geodesicPath), not straight
 //   lines on the projected map
 //   corner portals (link/field ends with no portal data) → smaller dot under
-//                   the portals; faction and key filters only (no level to filter by)
+//                   the portals; faction filter only (no level to filter by)
 import L from 'leaflet';
 import { FACTION } from '../config.js';
-import { keys } from '../state/keys.js';
 import { geodesicPath } from './geo.js';
 
 export const fcol = (id) => FACTION[id]?.color || FACTION.neu.color;
@@ -28,16 +27,13 @@ const factionOn = (f, fac) => (fac === 'res' ? !!f.res : fac === 'enl' ? !!f.enl
 // Shared visibility predicates — the renderer and the highlight overlay must
 // agree on exactly what is shown. Unclaimed portals obey only their own toggle
 // (no level/faction filter); claimed ones obey level (clamped 1..8) + faction.
-// "only portals with a key" applies on top, once the key set is loaded.
-const keyOk = (p, f) => !f.keysOnly || !keys.ready || keys.qty(p.id) > 0;
 export function portalVisible(p, f) {
-  if (!keyOk(p, f)) return false;
   if (p.faction === 'neu') return !!f.neutral;
   const lvl = Math.max(1, Math.min(8, p.level || 1));
   return !!f.levels[lvl] && factionOn(f, p.faction);
 }
 export const fieldVisible = (fd, f) => !!f.fields && factionOn(f, fd.faction);
-export const cornerVisible = (p, f) => factionOn(f, p.faction) && keyOk(p, f);
+export const cornerVisible = (p, f) => factionOn(f, p.faction);
 
 export function makeGroups(map) {
   // z-order: fields under links under portals.

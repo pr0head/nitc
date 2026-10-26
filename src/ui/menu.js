@@ -4,6 +4,8 @@
 // The plate and its menu sit above every map panel; only modal dialogs and
 // tooltips go over them.
 const BARS = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>';
+import { backOpen, backClosed } from './back.js';
+
 const CHECK = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
 
 // plate: the .who element; the button is inserted at its start
@@ -21,7 +23,9 @@ export function createMenu(plate) {
   const items = []; // { el, isOn }
   const paint = () => items.forEach((it) => it.isOn && it.el.classList.toggle('on', !!it.isOn()));
 
+  const close = () => setOpen(false);
   function setOpen(open) {
+    if (open) backOpen(close); else backClosed(close);
     list.hidden = !open;
     btn.setAttribute('aria-expanded', String(open));
     btn.classList.toggle('on', open);
@@ -47,6 +51,7 @@ export function createMenu(plate) {
     },
     sep() {
       const s = document.createElement('div'); s.className = 'menu-sep'; list.append(s);
+      return s;
     },
     refresh: paint,
   };

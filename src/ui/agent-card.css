@@ -37,7 +37,11 @@
 }
 .ag-medal.ag-none .md-art { filter: grayscale(1) brightness(0.8); opacity: 0.35; }
 .ag-medal.ag-none span { color: var(--dim); }
-.ag-mdet { margin-top: 6px; font-size: 12px; color: var(--muted); }
+/* taller than the other list windows: the medals with their details line
+   fit whole on most screens */
+.lm-box:has(.ag-medals) { max-height: min(88vh, 700px); }
+.ag-mdet { margin-top: 6px; font-size: 12px; line-height: 1.35; min-height: 2.7em; color: var(--muted); }
+.ag-mdet.ag-hint { color: var(--dim); }
 .ag-credit { margin-top: 8px; font-size: 10px; color: var(--dim); }
 .ag-credit a { color: inherit; }
 @media (max-width: 400px) { .ag-medals { grid-template-columns: repeat(4, 1fr); } }

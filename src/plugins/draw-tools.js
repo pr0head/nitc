@@ -27,6 +27,7 @@ import { plans } from './plans.js';
 import { ringArea, fmtArea, geodesicPath } from '../map/geo.js';
 import { confirmBox, promptBox, alertBox } from '../ui/dialog.js';
 import { esc } from '../ui/esc.js';
+import { backOpen, backClosed } from '../ui/back.js';
 
 const DRAW = ['line', 'triangle'];
 const svg = (s, body) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
@@ -116,11 +117,13 @@ export function mountDrawTools(container, engine, menu) {
   function activate() {
     tools.activate('draw'); // closes any other open map tool
     active = true; panel.hidden = false; prefs.set({ draw: true });
+    backOpen(deactivate); // Back leaves the drawing mode
     model = plans.openLast(); // the plan last worked on, if any
     layer.addTo(map); redraw();
   }
   function deactivate() {
     active = false; panel.hidden = true; prefs.set({ draw: false });
+    backClosed(deactivate);
     cancelDraw(); setTool(null);
     map.removeLayer(layer); map.removeLayer(editLayer);
     tools.drawMode = false;

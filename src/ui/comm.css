@@ -37,8 +37,13 @@
 }
 .comm-row:hover { background: var(--hover); }
 .comm-time { color: var(--dim); flex: none; font-variant-numeric: tabular-nums; }
-.comm-nick { font-weight: 600; flex: none; max-width: 120px; overflow: hidden; text-overflow: ellipsis; }
-.comm-msg { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
+.comm-text {
+  flex: 1; min-width: 0; display: flex; gap: 6px; align-items: baseline;
+  overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none;
+}
+.comm-text::-webkit-scrollbar { display: none; }
+.comm-nick { font-weight: 600; flex: none; }
+.comm-msg { flex: none; color: var(--text); padding-right: 8px; }
 .comm-p { color: var(--accent); text-decoration: none; }
 .comm-p:hover { text-decoration: underline; }
 .comm-mu { color: #ffd24a; }
@@ -56,9 +61,21 @@
   .comm-fac, .comm-toggle { width: 34px; height: 34px; }
   .comm-kind { padding: 6px; }
 }
+/* phones either way up: no compact feed; COMM opens from the menu as a modal
+   window over a shade, like the other windows there */
+.comm-shade { display: none; }
+@media (max-width: 560px), (max-height: 500px) {
+  .comm:not(.comm--open) { display: none; }
+  .comm.comm--open {
+    position: fixed; z-index: 1401; top: 16px; bottom: 16px;
+    left: max(16px, calc(50% - 230px)); right: max(16px, calc(50% - 230px)); width: auto; max-width: none;
+  }
+  .comm--open + .comm-shade { display: block; position: fixed; inset: 0; z-index: 1400; background: #000a; }
+  .comm-toggle.comm-close { font-size: 22px; line-height: 1; }
+}
 /* phones: the feed spans the width, so the bottom-right controls sit above
    the compact feed (an expanded one covers them) */
 @media (max-width: 560px) {
-  .comm, .comm--open { width: auto; right: 10px; }
+  .comm { width: auto; right: 10px; }
   .leaflet-bottom.leaflet-right { bottom: calc(var(--comm-compact-h, 0px) + 10px); }
 }
