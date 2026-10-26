@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Netgress Map API",
-    "version": "1.1.0",
-    "description": "Read-only Netgress API for third-party maps, reviewed 2026-10-26. Includes public agent profiles, owner-only keys and inventory summaries, and world MU balance. Allowed browser origins: https://intel.ingress.com, https://intel-x.ingress.com, https://pr0head.github.io. Bearer Intel tokens remain read-only and are required for every GET. Examples are synthetic."
+    "version": "1.2.0",
+    "description": "Read-only Netgress API for third-party maps, reviewed 2026-10-26. Includes public agent profiles, owner-only keys and inventory summaries, and world MU balance. Allowed browser origins: https://intel.ingress.com, https://intel-x.ingress.com, https://pr0head.github.io. Bearer Intel tokens remain read-only and are required for every GET. Examples are synthetic. Version 1.2 adds /v1/intel/rating with the game client metrics: active_links and active_mu; fixed 25-entry generation-bound pages."
   },
   "servers": [
     {
@@ -38,6 +38,9 @@
     },
     {
       "name": "Score"
+    },
+    {
+      "name": "Rating"
     }
   ],
   "paths": {
@@ -929,6 +932,117 @@
           },
           "403": {
             "$ref": "#/components/responses/403"
+          },
+          "429": {
+            "$ref": "#/components/responses/429"
+          },
+          "500": {
+            "$ref": "#/components/responses/500"
+          },
+          "503": {
+            "$ref": "#/components/responses/503"
+          }
+        }
+      }
+    },
+    "/v1/intel/rating": {
+      "get": {
+        "operationId": "getIntelRating",
+        "tags": [
+          "Rating"
+        ],
+        "summary": "Read the same agent rating as the game client",
+        "description": "kind=links maps to active_links (count), kind=fields maps to active_mu (MU of active fields). Not lifetime links/field counts. Fixed 25 entries; stable score/identity generation across pages, opaque cursor valid about 10 minutes. Level is current, nullable, timestamped by levels_as_of, and is not frozen in the score generation. Includes self independent of page. No-store; no ETag. No region/history filters.",
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "enum": [
+                "links",
+                "fields"
+              ]
+            },
+            "description": "Game tabs: active links or active-field MU."
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 512
+            },
+            "description": "Unmodified next_cursor from the same kind. Omit for first page. null next_cursor means end."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Rating page; empty entries is a valid success.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RatingPage"
+                },
+                "example": {
+                  "kind": "leaderboard",
+                  "schema_version": 1,
+                  "rating_kind": "links",
+                  "metric": "active_links",
+                  "unit": "count",
+                  "snapshot": {
+                    "id": "00000000-0000-4000-8000-000000000100",
+                    "as_of": "2026-10-26T12:00:00Z",
+                    "published_at": "2026-10-26T12:00:01Z",
+                    "expires_at": "2026-10-26T12:10:02Z",
+                    "coverage_note": "По подтверждённым действиям; история до начала учёта может быть неполной"
+                  },
+                  "entries": [
+                    {
+                      "id": "00000000-0000-4000-8000-000000000001",
+                      "nickname": "ExampleAgent",
+                      "faction": "blue",
+                      "rank": 1,
+                      "score": 42,
+                      "is_self": true,
+                      "level": 8
+                    }
+                  ],
+                  "self": {
+                    "id": "00000000-0000-4000-8000-000000000001",
+                    "nickname": "ExampleAgent",
+                    "faction": "blue",
+                    "status": "ranked",
+                    "rank": 1,
+                    "score": 42,
+                    "level": 8
+                  },
+                  "next_cursor": null,
+                  "levels_as_of": "2026-10-26T12:00:02Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400"
+          },
+          "401": {
+            "$ref": "#/components/responses/401"
+          },
+          "403": {
+            "$ref": "#/components/responses/403"
+          },
+          "410": {
+            "$ref": "#/components/responses/410"
           },
           "429": {
             "$ref": "#/components/responses/429"
@@ -2264,6 +2378,272 @@
           "schema",
           "balance"
         ]
+      },
+      "RatingEntry": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nickname": {
+            "type": "string"
+          },
+          "faction": {
+            "enum": [
+              "blue",
+              "green"
+            ]
+          },
+          "rank": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "score": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "maximum": 9223372036854775807
+          },
+          "is_self": {
+            "type": "boolean"
+          },
+          "level": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 8
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "nickname",
+          "faction",
+          "rank",
+          "score",
+          "is_self",
+          "level"
+        ]
+      },
+      "RatingSelf": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nickname": {
+            "type": "string"
+          },
+          "faction": {
+            "enum": [
+              "blue",
+              "green"
+            ]
+          },
+          "status": {
+            "enum": [
+              "ranked",
+              "unranked",
+              "not_tracked"
+            ]
+          },
+          "rank": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "format": "int64",
+                "minimum": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "format": "int64",
+                "minimum": 0,
+                "maximum": 9223372036854775807
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "level": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 8
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "nickname",
+          "faction",
+          "status",
+          "rank",
+          "score",
+          "level"
+        ]
+      },
+      "RatingSnapshot": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "as_of": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "published_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "coverage_note": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "as_of",
+          "published_at",
+          "expires_at",
+          "coverage_note"
+        ]
+      },
+      "RatingPage": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "leaderboard"
+          },
+          "schema_version": {
+            "type": "integer",
+            "const": 1
+          },
+          "rating_kind": {
+            "enum": [
+              "links",
+              "fields"
+            ]
+          },
+          "metric": {
+            "enum": [
+              "active_links",
+              "active_mu"
+            ]
+          },
+          "unit": {
+            "enum": [
+              "count",
+              "mu"
+            ]
+          },
+          "snapshot": {
+            "$ref": "#/components/schemas/RatingSnapshot"
+          },
+          "entries": {
+            "type": "array",
+            "maxItems": 25,
+            "items": {
+              "$ref": "#/components/schemas/RatingEntry"
+            }
+          },
+          "self": {
+            "$ref": "#/components/schemas/RatingSelf"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 512
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "levels_as_of": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "kind",
+          "schema_version",
+          "rating_kind",
+          "metric",
+          "unit",
+          "snapshot",
+          "entries",
+          "self",
+          "next_cursor",
+          "levels_as_of"
+        ],
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "rating_kind": {
+                  "const": "links"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "metric": {
+                  "const": "active_links"
+                },
+                "unit": {
+                  "const": "count"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "rating_kind": {
+                  "const": "fields"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "metric": {
+                  "const": "active_mu"
+                },
+                "unit": {
+                  "const": "mu"
+                }
+              }
+            }
+          }
+        ]
       }
     },
     "responses": {
@@ -2338,6 +2718,16 @@
       },
       "503": {
         "description": "Temporary service unavailability.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "410": {
+        "description": "leaderboard_snapshot_expired: restart this rating tab from its first page.",
         "content": {
           "application/json": {
             "schema": {

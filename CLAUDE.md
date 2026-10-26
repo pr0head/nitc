@@ -48,7 +48,9 @@ to that original game. Practical consequences for us:
 - `GET /v1/intel/activity?bbox=…[&cursor|&after]` → `{items[],next,after,more}` (COMM, 50/page).
 - Since 1.1.0: portal detail adds `planning{max_link_range_m,incoming_links,outgoing_links,outgoing_limit,…}`;
   `GET /v1/intel/me`, `/agents/{id}`, `/agents?nickname=` (profiles), `/me/keys?cursor=` (own keys,
-  128/page), `/me/inventory`, `/score` (world MU). Profiles/keys/inventory are `no-store` (no ETag).
+  128/page), `/me/inventory`, `/score` (world MU), `/rating?kind=links|fields&cursor=` (world
+  agent rating, 25/page, one snapshot per cursor chain; `410` → start over; details in
+  `docs/NETGRESS_INTEL_RATING.md`). Profiles/rating/keys/inventory are `no-store` (no ETag).
 - bbox order is **west,south,east,north**; `position:{latitude,longitude}` (no E6).
 - faction: `blue | green | neutral`. UUIDs are opaque keys, not coordinates.
 - Full, authoritative details: **`docs/NETGRESS_MAP_API.md`** — read it before touching API code.

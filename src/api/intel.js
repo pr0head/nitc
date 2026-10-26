@@ -50,3 +50,11 @@ export function getKeys(cursor, signal) {
 export function getInventory(signal) {
   return api.get('/v1/intel/me/inventory', { signal });
 }
+
+// GET /v1/intel/rating?kind=links|fields[&cursor=…] — world agent rating,
+// 25 per page, one published snapshot per cursor chain (no-store)
+export function getRating(kind, cursor, signal) {
+  const q = new URLSearchParams({ kind });
+  if (cursor) q.set('cursor', cursor);
+  return api.get(`/v1/intel/rating?${q}`, { signal });
+}

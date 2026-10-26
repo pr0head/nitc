@@ -183,3 +183,19 @@ export function adaptScore(j) {
     revision: n(b.revision),
   };
 }
+
+// /rating page. score/rank stay null when unknown (never 0 for "unknown");
+// self.status: ranked | unranked (0, no place) | not_tracked.
+export function adaptRating(j) {
+  const n = (v) => (v == null ? null : num(v));
+  const agent = (e) => ({
+    id: e.id, nick: e.nickname || '', faction: factionByApi(e.faction).id,
+    rank: n(e.rank), score: n(e.score), level: e.level == null ? null : e.level | 0,
+  });
+  return {
+    rows: (j?.entries || []).map((e) => ({ ...agent(e), self: !!e.is_self })),
+    self: j?.self ? { ...agent(j.self), status: j.self.status || 'not_tracked' } : null,
+    asOf: j?.snapshot?.as_of ? Date.parse(j.snapshot.as_of) : null,
+    next: j?.next_cursor ?? null,
+  };
+}

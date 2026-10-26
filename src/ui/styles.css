@@ -118,7 +118,34 @@ body { background: var(--bg); color: var(--text); font-family: var(--font); }
 .score:hover { border-color: var(--accent-dim); }
 
 /* world score window */
-.sc-box { width: 360px; }
+.sc-box { width: 380px; max-height: min(80vh, 640px); }
+.sc-tabs { position: sticky; top: -6px; z-index: 1; margin: 0 0 6px; box-shadow: 0 -6px 0 var(--panel); }
+.sc-tabs button { flex: 1; }
+/* agent rating (score window tabs) */
+.rt-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 4px 4px; font-size: 11px; color: var(--dim); }
+.rt-btn, .rt-more {
+  background: none; border: 1px solid var(--line); border-radius: 6px; color: var(--muted);
+  font: inherit; font-size: 11px; padding: 3px 8px; cursor: pointer;
+}
+.rt-btn:hover:not(:disabled), .rt-more:hover:not(:disabled) { color: var(--text); border-color: var(--accent-dim); }
+.rt-btn:disabled, .rt-more:disabled { opacity: 0.5; cursor: default; }
+.rt-more { display: block; width: 100%; margin: 6px 0 2px; padding: 6px; font-size: 12px; }
+.rt-row { display: flex; align-items: center; gap: 8px; padding: 3px 6px; border-radius: 6px; font-size: 13px; }
+.rt-row:hover { background: var(--hover); }
+.rt-row.me { background: var(--accent-bg); box-shadow: inset 2px 0 0 var(--accent); }
+.rt-rank { flex: none; width: 28px; text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; font-size: 12px; }
+.rt-lvl {
+  flex: none; width: 20px; height: 20px; border: 1.5px solid; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700;
+}
+.rt-nick { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rt-v { flex: none; font-variant-numeric: tabular-nums; }
+.rt-self {
+  position: sticky; bottom: -6px; margin: 6px -6px -6px; padding: 8px 12px;
+  background: var(--panel); border-top: 1px solid var(--line); font-size: 12px;
+}
+.rt-self-h { color: var(--muted); }
+@media (pointer: coarse) { .rt-row { padding: 8px 6px; } }
 .sc { padding: 4px 6px 8px; }
 .sc-fac { display: flex; align-items: baseline; gap: 8px; font-size: 13px; padding: 2px 0; }
 .sc-fac span { flex: 1; color: var(--muted); }
