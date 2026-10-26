@@ -62,7 +62,12 @@ public class MainActivity extends Activity {
         web.setWebChromeClient(new WebChromeClient() {
             @Override
             public void onGeolocationPermissionsShowPrompt(String origin, GeolocationPermissions.Callback cb) {
-                if (!isOurs(Uri.parse(origin + PATH))) { cb.invoke(origin, false, false); return; }
+                // origin is scheme + host (WebView adds a trailing slash) — no path to check
+                Uri o = Uri.parse(origin);
+                if (!"https".equals(o.getScheme()) || !HOST.equals(o.getHost())) {
+                    cb.invoke(origin, false, false);
+                    return;
+                }
                 if (hasLocation()) { cb.invoke(origin, true, false); return; }
                 geoOrigin = origin;
                 geoCallback = cb;
