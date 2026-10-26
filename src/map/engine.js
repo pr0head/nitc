@@ -56,6 +56,8 @@ export function createMap(el, { onStatus, onPortalClick, onUnauthorized, statusE
     preferCanvas: true,
     renderer: L.canvas({ padding: 0.5 }), // draw a bit beyond the viewport → fewer redraws on pan
   });
+  // only the tile providers' credits, without Leaflet's own prefix (as IITC)
+  map.attributionControl.setPrefix('');
   // bottom-right stack, bottom to top: attribution, map status, zoom (Leaflet
   // puts each later bottom control above the earlier ones). Top-left is the
   // identity plate.
