@@ -22,3 +22,13 @@ export function getActivity(bbox, { cursor, after } = {}, signal) {
   else if (after) q += `&after=${encodeURIComponent(after)}`;
   return api.get(q, { signal, etag: false });
 }
+
+// GET /v1/intel/me — the token owner's profile (no-store: no ETag)
+export function getMe(signal) {
+  return api.get('/v1/intel/me', { signal });
+}
+
+// GET /v1/intel/score — world MU balance of the factions
+export function getScore(signal) {
+  return api.get('/v1/intel/score', { signal, etag: true });
+}

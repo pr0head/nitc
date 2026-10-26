@@ -4,6 +4,7 @@
 //                 always on top. Draw tools panel under it, when switched on
 //   bottom-left : COMM (activity log of the visible area); expanded, it covers
 //                 the draw panel
+//   top-centre  : world MU balance
 //   top-right   : layers button; the portal card docks in the corner and the
 //                 button moves to its left while the card is open
 //   bottom-right: my location, zoom, map status (what is shown, load state), attribution
@@ -20,6 +21,10 @@ import { mountDrawTools } from '../plugins/draw-tools.js';
 import { createMapStatus } from './map-status.js';
 import { mountComm } from './comm.js';
 import { mountLocate } from './locate.js';
+import { mountScore } from './score.js';
+import { getMe } from '../api/intel.js';
+import { adaptAgent } from '../adapter/model.js';
+import { fcol } from '../map/render.js';
 import { createMenu } from './menu.js';
 import { confirmBox } from './dialog.js';
 import { esc } from './esc.js';
@@ -41,7 +46,7 @@ export function showApp(root) {
     <div class="app">
       <div class="map" id="map"></div>
       <div class="who">
-        <span class="who__me" title="Вход по email — ник появится, когда API отдаст профиль">${esc(session.email) || 'agent'}</span>
+        <span class="who__me" title="${esc(session.email)}">${esc(session.email) || 'agent'}</span>
       </div>
     </div>`;
 
@@ -70,6 +75,8 @@ export function showApp(root) {
   mountFavorites(menu, engine);
   mountPortalCard(engine);
   mountComm(app, engine);
+  mountScore(app);
+  showMe(root.querySelector('.who__me'));
 
   menu.sep();
   if (!inAndroidApp) menu.add({ icon: PHONE_ICON, label: 'Приложение для Android', href: APK_URL });
@@ -89,6 +96,20 @@ export function showApp(root) {
   const linked = openDeepLink(engine);
   mountLocate(engine, { centerOnStart: firstVisit && !linked });
   return engine;
+}
+
+// The plate shows the agent — nickname in faction colour and level — once
+// /me answers; until then (or if it fails) the login email stays.
+async function showMe(el) {
+  let me;
+  try { me = adaptAgent(await getMe()); } catch { return; }
+  if (!me.nick) return;
+  el.innerHTML = `<b style="color:${fcol(me.faction)}">${esc(me.nick)}</b> <span class="who__lvl">L${me.level}</span>`;
+  el.title = [
+    session.email,
+    `AP: ${me.ap.toLocaleString('ru-RU')}`,
+    me.next ? `до L${me.next.level}: ${me.next.remaining.toLocaleString('ru-RU')} AP` : '',
+  ].filter(Boolean).join('\n');
 }
 
 // #p=<id>,<lat>,<lng> centres the map on a portal and opens its card (the

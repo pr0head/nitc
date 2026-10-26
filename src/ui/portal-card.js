@@ -1,7 +1,8 @@
 // Portal card: click a portal → GET /portals/{id} → a card docked top-right:
 // photo, a stats grid, the 4 mod slots and the 8 resonators as a compass rose.
 //
-// Links/fields counts are NOT in the card — they come from the loaded map data
+// Link counts and link range come from the card's server `planning` block.
+// Fields are not in the card — they are counted from the loaded map data
 // (engine.getData()), so they cover what the current viewport loaded.
 //
 // Selection on the map: the portal's own outline turns red (engine), plus the
@@ -249,10 +250,15 @@ export function mountPortalCard(engine) {
     // the card is the authoritative name/position — star and circle what it says
     cur = { id: d.id, name: d.name, lat: d.lat, lng: d.lng }; paintFav();
     if (selCircle && ll(d)) selCircle.setLatLng([d.lat, d.lng]);
-    const range = G.linkRange(d);
+    // link range and link counts: the server's planning figures when present
+    // (exact: Link Amp/SoftBank effects, every link of the portal); otherwise
+    // our own estimate from the resonators and the loaded viewport
+    const pl = d.planning;
+    const range = pl ? { m: pl.rangeM, full: pl.full, meanL: pl.full ? 1 : 0 } : G.linkRange(d);
     drawRange(d.lat, d.lng, range.full ? range.m : 0); // 0 clears the circle
 
-    const g = G.graph(d.id, engine.getData());
+    const vg = G.graph(d.id, engine.getData());
+    const g = pl ? { ...vg, inc: pl.inc, out: pl.out, extra: 0, links: pl.inc + pl.out } : vg;
     const en = G.energy(d);
     const sh = G.shieldingPct(d);
     const resos = d.resonators.filter(Boolean);

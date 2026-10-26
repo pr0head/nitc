@@ -103,6 +103,24 @@ body { background: var(--bg); color: var(--text); font-family: var(--font); }
 .who__menu:hover, .who__menu.on { background: var(--hover); border-color: var(--line); }
 .who__brand { font-weight: 600; letter-spacing: 2px; font-size: 13px; }
 .who__me { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.who__lvl { color: var(--muted); font-size: 12px; }
+
+/* top-centre world MU balance */
+.score {
+  position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 1000;
+  display: flex; align-items: center; gap: 8px; padding: 6px 10px;
+  background: rgba(16, 21, 22, 0.92); border: 1px solid var(--line); border-radius: 10px;
+  box-shadow: 0 4px 20px #0007; font-size: 12px; font-weight: 600; cursor: default;
+}
+.score[hidden] { display: none !important; }
+.score-bar {
+  display: flex; width: 160px; height: 8px; border-radius: 4px; overflow: hidden;
+  background: var(--input); position: relative;
+}
+.score-st { position: absolute; inset: -4px 0; font-size: 10px; font-weight: 400; color: var(--muted); text-align: center; line-height: 16px; }
+.score-v { font-variant-numeric: tabular-nums; }
+/* no room between the plate and the card on narrow screens (mobile: later) */
+@media (max-width: 900px) { .score { display: none; } }
 
 .menu {
   position: absolute; top: calc(100% + 6px); left: 0; min-width: 220px; padding: 5px;

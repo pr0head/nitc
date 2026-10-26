@@ -47,6 +47,15 @@ export function adaptPortalDetail(j) {
     owner: j.owner || null,
     resonators,
     mods,
+    // server link planning (API 1.1): range of a NEW outgoing link and the
+    // portal's real link counts — all its links, not just the loaded viewport
+    planning: j.planning ? {
+      full: !!j.planning.fully_deployed,
+      rangeM: num(j.planning.max_link_range_m) || 0,
+      inc: j.planning.incoming_links | 0,
+      out: j.planning.outgoing_links | 0,
+      outLimit: j.planning.outgoing_limit | 0,
+    } : null,
   };
 }
 
@@ -120,4 +129,33 @@ function cornerPortals(portals, links, fields) {
   for (const l of links) { add(l.a, l.faction); add(l.b, l.faction); }
   for (const f of fields) for (const v of f.v) add(v, f.faction);
   return [...out.values()];
+}
+
+// Agent profile (/me, /agents): the public card. AP may be int64; JS Number is
+// exact up to 2^53, far above any real AP. next is null at the level cap.
+export function adaptAgent(j) {
+  const a = j?.agent || {};
+  const n = a.next_level;
+  return {
+    id: a.id || null,
+    nick: a.nickname || '',
+    faction: factionByApi(a.faction).id,
+    level: a.effective_level | 0,
+    ap: num(a.ap) || 0,
+    next: n ? { level: n.level | 0, required: num(n.required_ap) || 0, remaining: num(n.remaining_ap) || 0 } : null,
+  };
+}
+
+// World MU balance (/score). Sums and percents stay null when the server has
+// none (empty/partial/stale/disabled/unavailable) — never 0 or 50/50.
+export function adaptScore(j) {
+  const b = j?.balance || {};
+  const n = (v) => (v == null ? null : num(v));
+  return {
+    status: b.status || 'unavailable',
+    asOf: b.as_of ? Date.parse(b.as_of) : null,
+    mu: { res: n(b.resistance_mu), enl: n(b.enlightened_mu) },
+    pct: { res: n(b.resistance_percent), enl: n(b.enlightened_percent) },
+    fields: n(b.active_fields),
+  };
 }
