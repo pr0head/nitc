@@ -99,11 +99,14 @@ body { background: var(--bg); color: var(--text); font-family: var(--font); }
   display: flex; align-items: center; gap: 7px; flex: none;
   height: 30px; padding: 0 9px 0 7px;
   background: none; border: 1px solid transparent; border-radius: 7px; color: var(--accent); cursor: pointer;
+  font: inherit; line-height: 1; /* a button's own UI font sat its text off the email/nick line */
 }
 .who__menu:hover, .who__menu.on { background: var(--hover); border-color: var(--line); }
 .who__brand { font-weight: 600; letter-spacing: 2px; font-size: 13px; }
 .who__me { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .who__lvl { color: var(--muted); font-size: 12px; }
+.who__me--link { cursor: pointer; }
+.who__me--link:hover b { text-decoration: underline; }
 
 /* top-centre world MU balance */
 .score {
@@ -208,3 +211,13 @@ body:has(.pd:not([hidden])) .toolbar { right: calc(10px + min(330px, 100vw - 20p
 /* "my location" button (Leaflet bar, above zoom) */
 .nitc-locate { display: flex !important; align-items: center; justify-content: center; color: #333; }
 .nitc-locate.on { color: #1a73e8; }
+
+/* segmented control: tabs inside panels and cards (one shared style) */
+.seg { display: flex; gap: 2px; padding: 2px; background: var(--input); border: 1px solid var(--line); border-radius: 8px; }
+.seg button {
+  flex: 1; padding: 5px 8px; background: none; border: 0; border-radius: 6px;
+  color: var(--muted); font: 600 12px var(--font); cursor: pointer;
+}
+.seg button:hover { color: var(--text); }
+.seg button.on { background: var(--accent-bg); color: var(--accent); }
+@media (pointer: coarse) { .seg button { padding: 9px 8px; } }

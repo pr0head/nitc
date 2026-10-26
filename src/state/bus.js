@@ -4,6 +4,7 @@
 // Events:
 //   portalClick portal              a portal dot was clicked on the map
 //   openPortal  {portal, detail?}   open the card (favorites, deep link)
+//   openAgent   {id?, nick?}        open an agent card (nickname click)
 //   favoritesChanged                the starred list changed
 //   highlightChanged                highlight prefs changed (area labels)
 //   drawChanged shapes              draw tools saved its model

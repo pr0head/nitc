@@ -1,0 +1,45 @@
+/* Agent card (inside the list modal). */
+.ag-box { width: 420px; max-height: min(82vh, 760px); }
+.ag { padding: 4px 6px 8px; }
+.ag-head { display: flex; align-items: center; gap: 12px; margin: 4px 0 6px; }
+.ag-lvl {
+  flex: none; width: 52px; height: 52px; border: 2px solid; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; font: 700 18px var(--font);
+}
+.ag-who { flex: 1; min-width: 0; }
+.ag-fac { font-size: 12px; font-weight: 600; }
+.ag-ap { font-size: 15px; font-weight: 700; margin: 1px 0 4px; font-variant-numeric: tabular-nums; }
+.ag-bar { height: 5px; border-radius: 3px; background: var(--input); overflow: hidden; }
+.ag-bar span { display: block; height: 100%; }
+.ag-next { font-size: 11px; color: var(--muted); margin-top: 3px; }
+.ag-dim { color: var(--dim); font-weight: 400; }
+
+.ag-cur { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; text-align: center; }
+.ag-cur div { background: var(--input); border-radius: 6px; padding: 5px 2px; }
+.ag-cur b { display: block; font-size: 14px; }
+.ag-cur span { font-size: 10px; color: var(--muted); }
+
+.ag-sub { font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin: 10px 0 3px; }
+.ag-pane > .ag-sub:first-child { margin-top: 4px; }
+.ag-pane[hidden] { display: none; }
+.ag .seg { margin-top: 12px; }
+.ag-medals { display: flex; flex-direction: column; gap: 3px; }
+.ag-medal { display: flex; align-items: center; gap: 8px; padding: 3px 0; }
+.ag-tier {
+  flex: none; width: 62px; text-align: center; border-radius: 4px; padding: 2px 0;
+  font-size: 10px; font-weight: 700; color: #06080b; border: 1px solid #0006;
+}
+.ag-dark .ag-tier { color: #e6ecf3; border-color: #555; } /* onyx */
+.ag-none .ag-tier { border: 1px dashed var(--line); color: var(--dim); }
+.ag-none .ag-mt { color: var(--muted); }
+.ag-mt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ag-mp { flex: none; font-size: 11px; color: var(--dim); font-variant-numeric: tabular-nums; }
+
+.ag-stats { display: flex; flex-direction: column; }
+.ag-st { display: flex; justify-content: space-between; gap: 10px; padding: 2px 0; font-size: 12px; }
+.ag-st span:first-child { color: var(--muted); }
+.ag-st span:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* a nickname that opens the agent card (portal card, COMM) */
+.ag-link { color: inherit; text-decoration: none; cursor: pointer; }
+.ag-link:hover { text-decoration: underline; }

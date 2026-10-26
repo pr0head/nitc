@@ -38,8 +38,9 @@ export const confirmBox = (message, okLabel) => openDialog({ message, okLabel })
 export const promptBox = (message, initial, okLabel) => openDialog({ message, okLabel, initial: initial ?? '' });
 export const alertBox = (message) => openDialog({ message, cancel: false });
 
-// Centered modal with a title and a scrolling list body (favorites, plans).
-export function createListModal(title) {
+// Centered modal with a title and a scrolling list body (favorites, plans,
+// agent card). cls: an extra class on the box (e.g. a wider layout).
+export function createListModal(title, cls = '') {
   const modal = document.createElement('div');
   modal.className = 'lm'; modal.hidden = true;
   modal.innerHTML = '<div class="lm-box" role="dialog">' +
@@ -48,6 +49,7 @@ export function createListModal(title) {
     '<div class="lm-list"></div></div>';
   modal.querySelector('.lm-h').textContent = title;
   modal.querySelector('.lm-box').setAttribute('aria-label', title);
+  if (cls) modal.querySelector('.lm-box').classList.add(cls);
   document.body.append(modal);
 
   const close = () => { modal.hidden = true; };
@@ -59,5 +61,6 @@ export function createListModal(title) {
     open() { modal.hidden = false; },
     close,
     get isOpen() { return !modal.hidden; },
+    setTitle(text) { modal.querySelector('.lm-h').textContent = text; },
   };
 }

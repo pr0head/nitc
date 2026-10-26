@@ -22,6 +22,7 @@ import { createMapStatus } from './map-status.js';
 import { mountComm } from './comm.js';
 import { mountLocate } from './locate.js';
 import { mountScore } from './score.js';
+import { mountAgentCard } from './agent-card.js';
 import { getMe } from '../api/intel.js';
 import { adaptAgent } from '../adapter/model.js';
 import { fcol } from '../map/render.js';
@@ -76,6 +77,7 @@ export function showApp(root) {
   mountPortalCard(engine);
   mountComm(app, engine);
   mountScore(app);
+  mountAgentCard();
   showMe(root.querySelector('.who__me'));
 
   menu.sep();
@@ -105,6 +107,9 @@ async function showMe(el) {
   try { me = adaptAgent(await getMe()); } catch { return; }
   if (!me.nick) return;
   el.innerHTML = `<b style="color:${fcol(me.faction)}">${esc(me.nick)}</b> <span class="who__lvl">L${me.level}</span>`;
+  // the plate's own name opens the agent's own card
+  el.classList.add('who__me--link');
+  el.addEventListener('click', () => bus.emit('openAgent', { id: me.id, nick: me.nick }));
   el.title = [
     session.email,
     `AP: ${me.ap.toLocaleString('ru-RU')}`,

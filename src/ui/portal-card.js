@@ -19,6 +19,7 @@ import { bus, tools } from '../state/bus.js';
 import { coarsePointer } from './toolbar.js';
 import { esc } from './esc.js';
 import { STAR } from './icons.js';
+import { agentLink } from './agent-card.js';
 
 const SEL_COL = '#ff2d2d';
 // short slot labels; the label colour is the rarity
@@ -120,10 +121,16 @@ export function mountPortalCard(engine) {
   });
   bus.on('favoritesChanged', paintFav);
 
-  // ---- body interactions: share; tips on resonator/mod slots ----
+  // ---- body interactions: agent links, share; tips on resonator/mod slots ----
   const TIPPED = '.pd-rchip, .pd-slabel[data-tip]';
   let tapped = null;
   bodyEl.addEventListener('click', (e) => {
+    const ag = e.target.closest('.ag-link');
+    if (ag) {
+      e.preventDefault(); hideTip(); tapped = null;
+      bus.emit('openAgent', { nick: ag.dataset.nick });
+      return;
+    }
     if (coarsePointer) {
       // on touch a tap toggles what hover does with a mouse
       const t = e.target.closest(TIPPED);
@@ -270,7 +277,7 @@ export function mountPortalCard(engine) {
 
     // stats: 8 figures in two columns (the grid fills column-first)
     const rows = [
-      ['Владелец', d.owner ? `<span style="color:${col}">${esc(d.owner)}</span>` : dash],
+      ['Владелец', d.owner ? agentLink(d.owner, { color: col }) : dash],
       ['AP за снос', String(G.destroyAp(d, g))],
       ['Линки', `${g.inc} вх / ${g.out} исх` +
         (g.extra ? ` <span class="pd-approx" title="рёбра полей, которых нет среди загруженных линков">+${g.extra}</span>` : '')],
@@ -292,7 +299,7 @@ export function mountPortalCard(engine) {
       const short = MOD_SHORT[s.type] || String(s.type || '?').slice(0, 2).toUpperCase();
       return '<div class="pd-slot">' +
         `<div class="pd-slabel" style="background:${rr ? rr.color : '#6b7683'}" data-tip="${esc(tip)}">${esc(short)}</div>` +
-        `<div class="pd-sowner" title="${esc(m.owner || '')}">${esc(m.owner || '')}</div></div>`;
+        `<div class="pd-sowner" title="${esc(m.owner || '')}">${agentLink(m.owner)}</div></div>`;
     }).join('') + '</div>');
 
     // resonators: a compass rose — each slot at its bearing, the chip's fill
@@ -312,7 +319,7 @@ export function mountPortalCard(engine) {
         return `<div class="pd-rchip" style="border-color:${col}" data-tip="${esc(tip)}">` +
           `<span class="pd-rfill" style="height:${p == null ? 0 : Math.round(p)}%;background:${fill}"></span>` +
           `<span class="pd-rlvl">${r.level}</span>` +
-          `<span class="pd-rown">${esc(r.owner || '—')}</span></div>`;
+          `<span class="pd-rown">${r.owner ? agentLink(r.owner) : '—'}</span></div>`;
       }).join('') + '</div>');
     } else parts.push('<div class="pd-muted">не установлены</div>');
 

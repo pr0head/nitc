@@ -30,6 +30,7 @@ import { bus } from '../state/bus.js';
 import { coarsePointer } from './toolbar.js';
 import { esc } from './esc.js';
 import { errText } from './errors.js';
+import { agentLink } from './agent-card.js';
 
 const OPEN_ZOOM = MAP.minPortalZoom; // a clicked portal opens where portals are visible
 const GROUP = {
@@ -253,7 +254,7 @@ export function mountComm(container, engine) {
     listEl.innerHTML = !rows.length ? emptyLine() : olderLine() + rows.reverse().map((ev) =>
       `<div class="comm-row" data-id="${esc(ev.id)}" title="${esc(plain(ev))}">` +
       `<span class="comm-time">${fmtTime(ev.time)}</span>` +
-      `<span class="comm-nick" style="color:${fcol(ev.faction)}">${esc(ev.nick)}</span>` +
+      `<span class="comm-nick">${agentLink(ev.nick, { id: ev.actorId, color: fcol(ev.faction) })}</span>` +
       `<span class="comm-msg">${message(ev)}</span></div>`).join('') +
       (err ? note(esc(err), 'comm-err') : '');
 
@@ -280,6 +281,12 @@ export function mountComm(container, engine) {
   // portal name → centre on it (zoomed in enough to show portals) + its card
   listEl.addEventListener('click', (e) => {
     if (e.target.closest('.comm-more')) { older(); return; }
+    const ag = e.target.closest('.ag-link');
+    if (ag) {
+      e.preventDefault();
+      bus.emit('openAgent', { id: ag.dataset.id, nick: ag.dataset.nick });
+      return;
+    }
     const a = e.target.closest('.comm-p');
     if (a) {
       e.preventDefault();

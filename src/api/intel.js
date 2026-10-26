@@ -32,3 +32,10 @@ export function getMe(signal) {
 export function getScore(signal) {
   return api.get('/v1/intel/score', { signal, etag: true });
 }
+
+// GET /v1/intel/agents/{id} | /v1/intel/agents?nickname=… (exact, any case)
+export function getAgent({ id, nick }, signal) {
+  const q = id ? `/v1/intel/agents/${encodeURIComponent(id)}`
+    : `/v1/intel/agents?${new URLSearchParams({ nickname: nick })}`;
+  return api.get(q, { signal });
+}

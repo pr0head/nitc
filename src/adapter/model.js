@@ -92,6 +92,7 @@ export function adaptEvent(e) {
     id: String(e.id),
     kind: e.kind || '',
     time: Date.parse(e.time) || 0,
+    actorId: e.actor_id || null,
     nick: e.nickname || '',
     faction: factionByApi(e.faction).id,
     portals: (e.portals || []).map((p) => ({
@@ -143,8 +144,27 @@ export function adaptAgent(j) {
     level: a.effective_level | 0,
     ap: num(a.ap) || 0,
     next: n ? { level: n.level | 0, required: num(n.required_ap) || 0, remaining: num(n.remaining_ap) || 0 } : null,
+    lifetime: (j?.statistics?.lifetime || []).map(adaptMetric),
+    current: {
+      status: j?.statistics?.current?.status || 'unavailable',
+      metrics: (j?.statistics?.current?.metrics || []).map(adaptMetric),
+    },
+    // earned_tier is the truth (0 = none, 1..5 = bronze..onyx); thresholds only
+    // show the way to the next tier
+    medals: (j?.medals || []).map((m) => ({
+      id: m.id, title: m.title || m.id, desc: m.description || '',
+      metric: m.metric_code || null, tier: m.earned_tier | 0,
+      thresholds: (m.thresholds || []).map(num),
+    })),
   };
 }
+
+// value null ≠ 0: not tracked or unknown; coverage says how much history it holds
+const adaptMetric = (m) => ({
+  code: m.code, unit: m.unit || 'count', value: m.value == null ? null : num(m.value),
+  available: m.availability === 'available', coverage: m.coverage || 'unknown',
+  from: m.observed_from ? Date.parse(m.observed_from) : null,
+});
 
 // World MU balance (/score). Sums and percents stay null when the server has
 // none (empty/partial/stale/disabled/unavailable) — never 0 or 50/50.
