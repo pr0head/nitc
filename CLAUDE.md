@@ -80,6 +80,8 @@ See `docs/architecture.md` for the detailed module plan and data model.
 - Small, composable modules; no heavyweight framework unless we agree on one first.
 - Commit messages: imperative, scoped (e.g. `api: add ETag revalidation`).
 - Never commit `dist/` — it is a build artifact (see `.gitignore`).
+- Design every UI for phones in **both orientations**: portrait (~360px wide) and
+  landscape (~360px tall). Touch targets ≥ ~36px; no rows that only fit a desktop.
 
 ## Before you start a task
 - Read `docs/NETGRESS_MAP_API.md` for anything touching the network.
