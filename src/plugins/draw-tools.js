@@ -29,6 +29,11 @@ import { confirmBox, promptBox, alertBox } from '../ui/dialog.js';
 import { esc } from '../ui/esc.js';
 import { backOpen, backClosed } from '../ui/back.js';
 
+// a vertex handle's grab area around its dot: a finger needs far more room
+// than a mouse
+const touch = matchMedia('(pointer: coarse)');
+const handleSize = () => (touch.matches ? 44 : 20);
+
 const DRAW = ['line', 'triangle'];
 const svg = (s, body) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
 const I = {
@@ -228,7 +233,7 @@ export function mountDrawTools(container, engine, menu) {
     model.forEach((s, si) => s.latLngs.forEach((v, vi) => {
       const h = L.marker([v.lat, v.lng], {
         draggable: !cloning, keyboard: false, pane: PANE,
-        icon: L.divIcon({ className: 'draw-handle' + (cloning ? ' draw-clone' : ''), iconSize: [12, 12] }),
+        icon: L.divIcon({ className: 'draw-handle' + (cloning ? ' draw-clone' : ''), iconSize: [handleSize(), handleSize()] }),
       });
       if (cloning) {
         h.on('click', (ev) => { L.DomEvent.stop(ev); cloneAt(si, vi); });

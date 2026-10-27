@@ -7,7 +7,7 @@
 }
 .draw-panel[hidden] { display: none !important; }
 /* never past the screen (or an upright phone's portal sheet): the rest scrolls */
-.draw-panel { max-height: calc(100dvh - 72px - var(--sheet-h, 0px)); overflow-y: auto; }
+.draw-panel { max-height: calc(100dvh - 72px - var(--safe-t) - var(--safe-b) - var(--sheet-h, 0px)); overflow-y: auto; }
 .draw-sec { display: flex; flex-direction: column; gap: 4px; }
 .draw-btn, .draw-color {
   width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
@@ -17,8 +17,15 @@
 .draw-btn:hover { background: var(--hover); }
 .draw-btn.on { border-color: var(--accent); color: var(--accent); }
 
-.draw-handle { background: #fff; border: 2px solid #ff2d2d; border-radius: 50%; cursor: move; }
-.draw-handle.draw-clone { border-color: var(--accent); cursor: copy; }
+/* the handle is a transparent grab area (its size set in draw-tools.js), the
+   dot is drawn in its middle */
+.draw-handle { background: none; border: 0; cursor: move; }
+.draw-handle::after {
+  content: ''; position: absolute; left: 50%; top: 50%; width: 12px; height: 12px; margin: -8px 0 0 -8px;
+  background: #fff; border: 2px solid #ff2d2d; border-radius: 50%;
+}
+.draw-handle.draw-clone { cursor: copy; }
+.draw-handle.draw-clone::after { border-color: var(--accent); }
 .draw-vtx { background: #fff; border: 2px solid #000; border-radius: 50%; pointer-events: none; }
 .draw-farea {
   background: none; border: none; display: flex; align-items: center; justify-content: center;
@@ -27,6 +34,7 @@
 
 @media (pointer: coarse) {
   .draw-btn, .draw-color { width: 40px; height: 40px; }
+  .draw-handle::after { width: 14px; height: 14px; margin: -9px 0 0 -9px; }
 }
 
 /* a low screen (a phone on its side): two buttons a row, the sections kept
