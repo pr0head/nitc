@@ -30,10 +30,12 @@ export const MAP = {
   refreshMs: 30000,
 };
 
-// Agent tracker: how far back COMM events count and the zoom it shows from.
+// Agent tracker: how far back COMM events count, the zoom it shows from and
+// the zoom nicknames appear over the pins from.
 export const TRACK = {
   windowMs: 3 * 60 * 60 * 1000,
   minZoom: 9,
+  labelZoom: 14,
   color: '#ff00fd', // trail: one colour that stands out from both factions
 };
 

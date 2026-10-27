@@ -3,7 +3,8 @@
 // "Агенты" row of the layers matrix; hidden below TRACK.minZoom (kept, not
 // dropped).
 //   pin   — an agent's last place, faction colour, fading with age; agents
-//           last seen at one portal share a pin with a count
+//           last seen at one portal share a pin with a count; from
+//           TRACK.labelZoom the nickname stands over it (freshest, "+N" more)
 //   trail — dashed line through the agent's places, one colour, thinner and
 //           paler in four age steps
 //   click — a window: each agent there, the portal now and all places before
@@ -67,6 +68,7 @@ export function mountTracker(container, engine) {
     layer.clearLayers();
     if (map.getZoom() < TRACK.minZoom) return;
     const now = Date.now(), split = TRACK.windowMs / BUCKETS;
+    const labels = map.getZoom() >= TRACK.labelZoom;
     const list = tracks.all().filter(shown);
 
     for (const a of list) {
@@ -94,7 +96,9 @@ export function mountTracker(container, engine) {
       const fresh = Math.max(0, 1 - (now - time) / TRACK.windowMs);
       const icon = L.divIcon({
         className: 'trk-pin',
-        html: pin(fcol(group[0].faction)) + (group.length > 1 ? `<span class="trk-n">${group.length}</span>` : ''),
+        html: pin(fcol(group[0].faction)) + (group.length > 1 ? `<span class="trk-n">${group.length}</span>` : '') +
+          (labels ? `<span class="trk-nick" style="color:${fcol(group[0].faction)}">${esc(group[0].nick)}` +
+            `${group.length > 1 ? ` <i>+${group.length - 1}</i>` : ''}</span>` : ''),
         iconSize: [20, 28], iconAnchor: [10, 27],
       });
       L.marker([portal.lat, portal.lng], {
