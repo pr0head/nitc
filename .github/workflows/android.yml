@@ -3,6 +3,9 @@
 # run builds it as a workflow artifact only. Without the release key a manual
 # run falls back to a debug-signed APK (fine for testing; it cannot update a
 # release install), a tag fails.
+# The shell only opens the site, so a release that didn't touch android/ (or
+# this workflow) since the previous v* tag builds nothing: its release gets
+# the previous release's APK as is, so /releases/latest always has one.
 # Repo secrets (Settings → Secrets and variables → Actions):
 #   ANDROID_KEYSTORE_B64   base64 of the release keystore (.jks)
 #   ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD
@@ -21,21 +24,48 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-java@v6
+        with:
+          fetch-depth: 0 # tags, to compare with the previous release
+
+      # BUILD=1 → build; else PREV names the release whose APK is reused
+      - name: Changes since the previous release
+        run: |
+          prev=""
+          if [[ "$GITHUB_REF_TYPE" == tag ]]; then
+            prev=$(git describe --tags --abbrev=0 --match 'v*' "$GITHUB_REF_NAME^" 2>/dev/null || true)
+          fi
+          if [[ -n "$prev" ]] && git diff --quiet "$prev" HEAD -- android .github/workflows/android.yml; then
+            echo "::notice::android/ unchanged since $prev — reusing its APK"
+            echo "BUILD=0" >> "$GITHUB_ENV"; echo "PREV=$prev" >> "$GITHUB_ENV"
+          else
+            echo "BUILD=1" >> "$GITHUB_ENV"
+          fi
+
+      - name: Reuse the previous APK
+        if: env.BUILD == '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download "$PREV" --pattern 'nitc-*.apk'
+
+      - if: env.BUILD == '1'
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: 17
-      - uses: gradle/actions/setup-gradle@v6
+      - if: env.BUILD == '1'
+        uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: '9.8.2'
 
       - name: Version
+        if: env.BUILD == '1'
         run: |
           if [[ "$GITHUB_REF_TYPE" == tag ]]; then name="${GITHUB_REF_NAME#v}"; else name="0.0.0-${GITHUB_SHA::7}"; fi
           echo "VERSION_NAME=$name" >> "$GITHUB_ENV"
           echo "VERSION_CODE=$GITHUB_RUN_NUMBER" >> "$GITHUB_ENV"
 
       - name: Release key
+        if: env.BUILD == '1'
         env:
           KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
         run: |
@@ -49,6 +79,7 @@ jobs:
           echo "KEYSTORE_FILE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
 
       - name: Build
+        if: env.BUILD == '1'
         env:
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
