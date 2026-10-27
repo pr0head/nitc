@@ -498,7 +498,7 @@ export function mountPortalCard(engine) {
     // mod slots: 4 fixed columns, label coloured by rarity, owner underneath
     parts.push(`<div class="pd-h">Моды ${mods.length}/4</div>`);
     parts.push('<div class="pd-slots">' + d.mods.map((m) => {
-      if (!m) return '<div class="pd-slot"><div class="pd-slabel pd-ph"></div></div>';
+      if (!m) return '<div class="pd-slot"><div class="pd-slabel pd-ph"></div><div class="pd-sowner"></div></div>';
       const s = m.spec, rr = RARITY[s.rarity];
       const tip = `${s.name || s.type}${rr ? ' · ' + rr.name : ''}\n${modStats(s)}`;
       const short = MOD_SHORT[s.type] || String(s.type || '?').slice(0, 2).toUpperCase();

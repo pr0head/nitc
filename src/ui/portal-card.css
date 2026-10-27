@@ -50,12 +50,15 @@
 /* mod slots */
 .pd-slots { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin: 2px 0 4px; }
 .pd-slot { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+/* fixed label and owner heights: an empty slot takes the same room as a filled
+   one, so the card doesn't shift with the mods */
 .pd-slabel {
+  box-sizing: border-box; height: 22px; line-height: 14px;
   border-radius: 4px; padding: 3px 2px; text-align: center; font-weight: 700; font-size: 11px;
   color: #06080b; border: 1px solid #0006; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.pd-slabel.pd-ph { background: transparent !important; border: 1px dashed var(--line); min-height: 11px; }
-.pd-sowner { font-size: 10px; color: var(--muted); text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pd-slabel.pd-ph { background: transparent !important; border: 1px dashed var(--line); }
+.pd-sowner { height: 13px; line-height: 13px; font-size: 10px; color: var(--muted); text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* compass rose: NW N NE / W centre E / SW S SE */
 .pd-rose { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; justify-items: center; align-items: center; margin: 2px 0 6px; }
