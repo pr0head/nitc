@@ -272,6 +272,10 @@ body:has(.pd:not([hidden])) .toolbar { right: calc(10px + min(330px, 100vw - 20p
 .tb-mx-row { text-align: left; color: var(--text); font: 13px var(--font); letter-spacing: 0; }
 .tb-mx-cell { display: flex; justify-content: center; padding: 3px 0; cursor: pointer; }
 .tb-mx-cell input { accent-color: var(--accent); cursor: pointer; }
+.tb-mx-hint { display: none; font-size: 10px; font-weight: 400; color: var(--dim); }
+.tb-mx-off { opacity: 0.45; cursor: default; }
+.tb-mx-off .tb-mx-hint { display: block; }
+.tb-mx-off input { cursor: default; }
 
 @media (pointer: coarse) {
   .who__menu { height: 38px; }

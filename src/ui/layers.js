@@ -3,7 +3,7 @@
 //   right — overlay filters: a portal level range (unclaimed = level 0) and a
 //           type × faction matrix; applied live against loaded data via
 //           engine.setFilter, no refetch
-import { FACTION } from '../config.js';
+import { FACTION, TRACK } from '../config.js';
 import { ARC_OPTS, TEXT_OPTS, TOP_COLOR, BOT_COLOR } from '../map/highlight.js';
 import { addToolbarButton } from './toolbar.js';
 
@@ -11,7 +11,7 @@ const LAYERS_ICON =
   '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>';
 
 const LEVEL_OPTS = [['0', 'Нейтр.'], ...[1, 2, 3, 4, 5, 6, 7, 8].map((n) => [String(n), String(n)])];
-const MATRIX_ROWS = [['portals', 'Порталы'], ['links', 'Линки'], ['fields', 'Поля']];
+const MATRIX_ROWS = [['portals', 'Порталы'], ['links', 'Линки'], ['fields', 'Поля'], ['agents', 'Агенты']];
 const MATRIX_COLS = [['res', 'RES'], ['enl', 'ENL']];
 
 export function mountLayers(container, engine) {
@@ -67,7 +67,8 @@ export function mountLayers(container, engine) {
   }
 
   // type × faction: a cell toggles one pair; a column/row heading turns its
-  // whole line on, or off when it is all on already
+  // whole line on, or off when it is all on already. The agents row (tracker)
+  // greys out below the tracker's zoom, with a hint.
   function matrix(parent) {
     const grid = document.createElement('div'); grid.className = 'tb-mx';
     const boxes = []; // [row, fac, input]
@@ -83,10 +84,17 @@ export function mountLayers(container, engine) {
       b.style.color = FACTION[fac].color;
       grid.append(b);
     }
+    const gated = [];
     for (const [r, label] of MATRIX_ROWS) {
-      grid.append(mxBtn(label, label + ': обе фракции', () => toggle(MATRIX_COLS.map(([fac]) => [r, fac])), 'tb-mx-row'));
+      const rowBtn = mxBtn(label, label + ': обе фракции', () => toggle(MATRIX_COLS.map(([fac]) => [r, fac])), 'tb-mx-row');
+      grid.append(rowBtn);
+      if (r === 'agents') {
+        const hint = document.createElement('span'); hint.className = 'tb-mx-hint'; hint.textContent = 'приблизьте карту';
+        rowBtn.append(hint); gated.push(rowBtn);
+      }
       for (const [fac] of MATRIX_COLS) {
         const cell = document.createElement('label'); cell.className = 'tb-mx-cell';
+        if (r === 'agents') gated.push(cell);
         const inp = document.createElement('input'); inp.type = 'checkbox';
         inp.setAttribute('aria-label', label + ' ' + FACTION[fac].name);
         inp.addEventListener('change', () => { f.show[r][fac] = inp.checked; engine.setFilter({}); });
@@ -96,6 +104,15 @@ export function mountLayers(container, engine) {
     }
     paint();
     parent.append(grid);
+    const gate = () => {
+      const off = engine.map.getZoom() < TRACK.minZoom;
+      for (const x of gated) {
+        x.classList.toggle('tb-mx-off', off);
+        x.querySelectorAll('input, button').forEach((i) => { i.disabled = off; });
+        if (x.tagName === 'BUTTON') x.disabled = off;
+      }
+    };
+    engine.map.on('zoomend', gate); gate();
   }
   function mxBtn(text, title, on, cls = '') {
     const b = document.createElement('button'); b.type = 'button';

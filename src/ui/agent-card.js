@@ -13,11 +13,12 @@
 // earned tier is the server's; thresholds only show the way to the next one.
 // Details in the tooltip, and under the grid on a tap (no hover on a phone).
 import './agent-card.css';
-import { FACTION } from '../config.js';
+import { FACTION, TRACK } from '../config.js';
 import { getAgent } from '../api/intel.js';
 import { adaptAgent } from '../adapter/model.js';
 import { fcol } from '../map/render.js';
 import { bus } from '../state/bus.js';
+import { tracks, ago } from '../state/tracks.js';
 import { createListModal } from './dialog.js';
 import { medalSvg } from './medal-art.js';
 import { esc } from './esc.js';
@@ -97,8 +98,14 @@ export function mountAgentCard() {
   let reqId = 0, ctrl = null;
   let tab = 'medals'; // kept between cards
 
+  let shown = null; // the agent on the card
   bus.on('openAgent', open);
   modal.list.addEventListener('click', (e) => {
+    if (e.target.closest('.ag-track')) {
+      modal.close();
+      bus.emit('focusAgent', { id: shown.id, nick: shown.nick });
+      return;
+    }
     const md = e.target.closest('.ag-medal');
     if (md) {
       const det = modal.list.querySelector('.ag-mdet');
@@ -140,6 +147,7 @@ export function mountAgentCard() {
   }
 
   function render(a) {
+    shown = a;
     modal.setTitle(a.nick);
     const col = fcol(a.faction);
     const fac = FACTION[a.faction]?.name || '';
@@ -154,6 +162,12 @@ export function mountAgentCard() {
       `<div class="ag-bar"><span style="width:${pct}%;background:${col}"></span></div>` +
       `<div class="ag-next">${a.next ? `до L${a.next.level}: ${n(a.next.remaining)} AP` : 'максимальный уровень'}</div>` +
       '</div></div>');
+
+    // the tracker: the agent's last place from the loaded COMM, if any
+    const tr = tracks.find({ id: a.id, nick: a.nick });
+    parts.push(tr
+      ? `<button type="button" class="ag-track">Показать на карте · ${esc(ago(tr.last))}</button>`
+      : `<div class="ag-track-none">Нет действий в загруженной ленте за ${TRACK.windowMs / 3600000} ч</div>`);
 
     // what the agent holds right now (a background projection, may lag)
     const cur = a.current.metrics.filter((m) => CURRENT[m.code] && m.available);

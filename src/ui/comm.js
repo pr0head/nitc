@@ -16,6 +16,9 @@
 // A field's MU can arrive later: while a loaded field event still has mu=null
 // the first page is re-read on poll and merged by id (pointers untouched).
 //
+// The loaded events also feed the agent tracker (bus 'commEvents'); a tracker
+// focus picked on a phone ('agentFocus') folds the full-screen feed to show the map.
+//
 // Hovering an event draws it from the event's own coordinates — not from map
 // data — so it shows at any zoom, under any filter, and even when the link or
 // field no longer exists (dashed: "where it was").
@@ -110,14 +113,16 @@ export function mountComm(container, engine, menu) {
   const keyOf = (b) => [b.w, b.s, b.e, b.n].map((v) => v.toFixed(6)).join(',');
 
   function add(raw) {
+    const fresh = [];
     for (const r of raw || []) {
       const ev = adaptEvent(r);
       const had = byId.get(ev.id);
       if (had) { if (ev.mu != null) had.mu = ev.mu; continue; }
       byId.set(ev.id, ev);
-      items.push(ev);
+      items.push(ev); fresh.push(ev);
     }
     items.sort((a, b) => b.time - a.time || (b.id > a.id ? 1 : -1));
+    if (fresh.length) bus.emit('commEvents', fresh);
   }
 
   function fail(e, my) {
@@ -293,6 +298,8 @@ export function mountComm(container, engine, menu) {
     st.open = open; prefs.save(); paint('end');
   }
   if (st.open) backOpen(fold);
+  // a focus picked on a phone shows the map, not this full-screen list
+  bus.on('agentFocus', (a) => { if (a && phone.matches) setOpen(false); });
   toggleBtn.addEventListener('click', () => setOpen(!st.open));
   shade.addEventListener('click', fold);
   phone.addEventListener('change', () => paint());

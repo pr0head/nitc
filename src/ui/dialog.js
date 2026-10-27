@@ -65,6 +65,7 @@ export function createListModal(title, cls = '') {
   modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !modal.hidden) close(); });
   return {
+    el: modal,
     list: modal.querySelector('.lm-list'),
     open() { modal.hidden = false; backOpen(close); },
     close,

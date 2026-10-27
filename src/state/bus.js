@@ -7,6 +7,10 @@
 //   openAgent   {id?, nick?}        open an agent card (nickname click)
 //   favoritesChanged                the starred list changed
 //   highlightChanged                highlight prefs changed (area labels)
+//   filtersChanged filters          layer filters changed (agent tracker)
+//   commEvents  events[]            COMM loaded events (adapted) — the tracker's data
+//   focusAgent  {id?, nick?}|null   show one agent's track (agent card); null = none
+//   agentFocus  agent|null          the tracker focused an agent (a phone's COMM folds)
 //   drawChanged shapes              draw tools saved its model
 //   drawLoad    shapes              plans hands draw tools a model to show
 //   toolActivated name              a map tool took over map clicks

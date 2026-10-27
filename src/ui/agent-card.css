@@ -11,6 +11,13 @@
 .ag-ap { font-size: 15px; font-weight: 700; margin: 1px 0 4px; font-variant-numeric: tabular-nums; }
 .ag-bar { height: 5px; border-radius: 3px; background: var(--input); overflow: hidden; }
 .ag-bar span { display: block; height: 100%; }
+.ag-track {
+  display: block; width: 100%; min-height: 34px; margin-top: 10px; padding: 6px 10px;
+  background: var(--input); color: var(--text); border: 1px solid var(--line); border-radius: 8px;
+  font: 600 12px var(--font); cursor: pointer;
+}
+.ag-track:hover { border-color: var(--accent-dim); color: var(--accent); }
+.ag-track-none { margin-top: 10px; font-size: 12px; color: var(--dim); }
 .ag-next { font-size: 11px; color: var(--muted); margin-top: 3px; }
 .ag-dim { color: var(--dim); font-weight: 400; }
 

@@ -4,7 +4,7 @@
 //                 always on top. Draw tools panel under it, when switched on
 //   bottom-left : COMM (activity log of the visible area); expanded, it covers
 //                 the draw panel
-//   top-centre  : world MU balance
+//   top-centre  : world MU balance; under it, the agent the tracker focuses
 //   top-right   : layers button; the portal card docks in the corner and the
 //                 button moves to its left while the card is open
 //   bottom-right: my location, zoom, map status (what is shown, load state), attribution
@@ -19,6 +19,7 @@ import { mountFavorites } from '../plugins/favorites.js';
 import { mountPlans } from '../plugins/plans.js';
 import { mountDrawTools } from '../plugins/draw-tools.js';
 import { mountInventory } from '../plugins/inventory.js';
+import { mountTracker } from '../plugins/tracker.js';
 import { keys } from '../state/keys.js';
 import { createMapStatus } from './map-status.js';
 import { mountComm } from './comm.js';
@@ -78,6 +79,7 @@ export function showApp(root) {
   mountFavorites(menu, engine);
   mountInventory(menu, engine);
   mountPortalCard(engine);
+  mountTracker(app, engine); // before COMM: it lives on COMM's events
   mountComm(app, engine, menu);
   mountScore(app, menu);
   mountAgentCard();

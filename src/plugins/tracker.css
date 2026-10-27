@@ -1,0 +1,62 @@
+/* agent tracker pins: only the pin's shape takes clicks, so the portal dot
+   under its tip stays clickable around it */
+.leaflet-marker-icon.trk-pin { background: none; border: 0; pointer-events: none; }
+.trk-pin svg { display: block; filter: drop-shadow(0 1px 2px #0009); }
+.trk-pin path { pointer-events: auto; cursor: pointer; }
+.trk-n {
+  position: absolute; top: -6px; right: -8px; min-width: 16px; height: 16px; padding: 0 4px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+  color: var(--text); font: 600 10px/14px var(--font); text-align: center;
+}
+
+/* the pin's window */
+.trk-box { width: 340px; max-height: min(80vh, 560px); }
+.trk-ag { padding: 6px 6px 10px; }
+.trk-ag + .trk-ag { border-top: 1px solid var(--line); padding-top: 10px; }
+.trk-h { display: flex; align-items: baseline; gap: 8px; font-weight: 700; font-size: 14px; }
+.trk-h .trk-t { margin-left: auto; font-weight: 400; }
+.trk-t { color: var(--muted); font-size: 12px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.trk-now { margin-top: 2px; }
+.trk-sub { margin-top: 8px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); }
+.trk-row { display: flex; gap: 8px; align-items: baseline; padding: 3px 0; font-size: 13px; white-space: nowrap; }
+.trk-row .trk-p { flex: 0 1 auto; min-width: 0; }
+/* earlier places: their own scroll, so the button below stays in reach */
+.trk-before { max-height: 240px; overflow: auto; padding: 0 6px; margin: 2px -6px 0; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+.trk-row .trk-t { flex: none; }
+.trk-p { color: var(--text); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.trk-p:hover { color: var(--accent); text-decoration: underline; }
+.trk-btn {
+  margin-top: 10px; width: 100%; min-height: 34px; padding: 6px 10px;
+  background: var(--input); color: var(--text); border: 1px solid var(--line); border-radius: 8px;
+  font: 600 12px var(--font); cursor: pointer;
+}
+.trk-btn:hover { border-color: var(--accent-dim); color: var(--accent); }
+
+/* focused agent: a chip at the top centre, under the MU bar */
+.trk-chip {
+  position: absolute; top: calc(56px + var(--safe-t)); left: 50%; transform: translateX(-50%); z-index: 1000;
+  display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 4px 0 10px; max-width: calc(100vw - 20px);
+  background: rgba(16, 21, 22, 0.92); border: 1px solid var(--line); border-radius: 10px;
+  box-shadow: 0 4px 20px #0007; font-size: 13px; white-space: nowrap;
+}
+.trk-chip[hidden] { display: none; }
+.trk-chip .ag-link { font-weight: 700; line-height: 1; overflow: hidden; text-overflow: ellipsis; text-decoration: none; }
+.trk-chip .ag-link:hover { text-decoration: underline; }
+.trk-chip-dot { width: 14px; height: 0; border-top: 2px dashed; flex: none; }
+.trk-chip-x {
+  display: flex; align-items: center; justify-content: center; padding: 0;
+  width: 28px; height: 28px; flex: none; background: none; border: 0; border-radius: 6px;
+  color: var(--muted); cursor: pointer;
+}
+.trk-chip-x:hover { color: #fff; background: var(--hover); }
+@media (pointer: coarse) { .trk-chip-x { width: 36px; height: 36px; } }
+/* no MU bar there: the chip drops under the identity plate instead */
+@media (max-width: 900px) { .trk-chip { top: calc(68px + var(--safe-t)); } }
+
+/* with a mouse the window docks on the right, no shade: the map stays in
+   view for the hovered places */
+.lm.trk-lm { background: none; pointer-events: none; justify-content: flex-end; align-items: flex-start; padding-top: calc(60px + var(--safe-t)); }
+.trk-lm .lm-box { pointer-events: auto; }
+.trk-now, .trk-row { border-radius: 6px; margin: 0 -6px; padding-left: 6px; padding-right: 6px; }
+.trk-lm .trk-now:hover, .trk-lm .trk-row:hover { background: var(--hover); }
+.trk-act { flex: 1 1 0; min-width: 3em; margin-left: auto; text-align: right; font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; }

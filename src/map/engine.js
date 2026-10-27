@@ -170,6 +170,7 @@ export function createMap(el, { onStatus, onPortalClick, onUnauthorized, statusE
     Object.assign(prefs.filters, patch);
     prefs.save();
     paint();
+    bus.emit('filtersChanged', prefs.filters); // the agent tracker
   }
 
   // Merge a highlight patch, persist, re-render the overlay (no network).

@@ -3,8 +3,9 @@
 const KEY = 'nitc.prefs';
 
 // Overlay filters: a portal level range (0 = unclaimed) and a type × faction
-// matrix — each of portals/links/fields shown per faction on its own.
-const FILTER_ROWS = ['portals', 'links', 'fields'];
+// matrix — each of portals/links/fields/agents (tracker) shown per faction on its own.
+const FILTER_ROWS = ['portals', 'links', 'fields', 'agents'];
+const OLD_ROWS = ['portals', 'links', 'fields']; // what the older shape had
 const both = () => ({ res: true, enl: true });
 
 function defaults() {
@@ -51,7 +52,7 @@ function loadFilters(s, d) {
   if (s.neutral !== false) on.push(0);
   for (let n = 1; n <= 8; n++) if (!s.levels || s.levels[n] !== false) on.push(n);
   if (on.length) { d.minLevel = on[0]; d.maxLevel = on[on.length - 1]; }
-  for (const r of FILTER_ROWS) {
+  for (const r of OLD_ROWS) {
     for (const fac of ['res', 'enl']) d.show[r][fac] = s[fac] !== false && (r === 'portals' || s[r] !== false);
   }
   return d;
