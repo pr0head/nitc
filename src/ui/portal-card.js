@@ -1,5 +1,6 @@
 // Portal card: click a portal → GET /portals/{id} → a card docked top-right:
-// photo, a stats grid, the 4 mod slots and the 8 resonators as a compass rose.
+// a photo thumbnail beside the stats grid (a tap shows it full size), the 4
+// mod slots and the 8 resonators as a compass rose.
 //
 // Link counts and link range come from the card's server `planning` block.
 // Fields are not in the card — they are counted from the loaded map data
@@ -182,6 +183,7 @@ export function mountPortalCard(engine) {
       bus.emit('openAgent', { id: ag.dataset.id, nick: ag.dataset.nick });
       return;
     }
+    if (e.target.closest('.pd-thumb') && shown?.photoUrl) { openPhoto(shown.photoUrl); return; }
     const hb = e.target.closest('.pd-hbtn');
     if (hb) { loadHist(hb.dataset.h === 'more'); return; }
     if (coarsePointer) {
@@ -234,9 +236,9 @@ export function mountPortalCard(engine) {
   // the map's height: the window less the system bars' insets, if any
   const mapH = () => map.getContainer().clientHeight;
   const highH = () => mapH() - TOP_GAP;
-  // the head and the figures grid; before the card loads, a guess
+  // the head and the figures grid (with the thumbnail); before the card loads, a guess
   function lowH() {
-    const st = bodyEl.querySelector('.pd-stats');
+    const st = bodyEl.querySelector('.pd-top');
     return Math.min(highH(), st ? st.offsetTop + st.offsetHeight + 12 : headEl.offsetHeight + 120);
   }
   function setSheetH(h) {
@@ -380,6 +382,22 @@ export function mountPortalCard(engine) {
   });
   bus.on('openPortal', ({ portal, detail }) => openPortal(portal, detail));
 
+  // ---- photo, full size: over everything; a tap anywhere, Esc or Back closes ----
+  const lb = document.createElement('div');
+  lb.className = 'pd-lb'; lb.hidden = true;
+  lb.innerHTML = '<img alt="" referrerpolicy="no-referrer"><button type="button" class="pd-lb-x" title="Закрыть">&times;</button>';
+  document.body.append(lb);
+  const closePhoto = () => {
+    if (lb.hidden) return;
+    lb.hidden = true; lb.querySelector('img').removeAttribute('src'); backClosed(closePhoto);
+  };
+  function openPhoto(url) {
+    lb.querySelector('img').src = url;
+    lb.hidden = false; backOpen(closePhoto);
+  }
+  lb.addEventListener('click', closePhoto);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closePhoto(); });
+
   // ---- history ----
   let hist = null;     // { id, items (newest first), next, state: loading|ok|err, err }
   let histCtrl = null;
@@ -466,8 +484,6 @@ export function mountPortalCard(engine) {
     const dash = '<span class="pd-dash">—</span>';
     const parts = [];
 
-    if (d.photoUrl) parts.push(`<img class="pd-photo" src="${esc(d.photoUrl)}" alt="" loading="lazy" referrerpolicy="no-referrer">`);
-
     // own keys to this portal: free ones can be spent on a link, the rest sit
     // in capsules (the breakdown in the tooltip). "—" only once the whole key
     // set is in; "…" while it loads, "?" if it couldn't be loaded.
@@ -479,21 +495,24 @@ export function mountPortalCard(engine) {
       : keys.state === 'loading' ? ['<span class="pd-muted">…</span>', 'ключи загружаются']
       : ['<span class="pd-muted">?</span>', 'ключи не загрузились'];
 
-    // stats: 9 figures in two columns (the grid fills column-first)
+    // stats: 8 figures in two columns of 4 (the grid fills column-first); the
+    // energy is not here — the resonator rose holds it in its centre
     const rows = [
       ['Ключи', ...keyCell],
-      ['Владелец', d.owner ? agentLink(d.owner, { color: col }) : dash],
+      ['Владелец', d.owner ? agentLink(d.owner, { color: col }) : dash, d.owner || ''], // a long nickname is cut: whole in the tooltip
       ['AP за снос', String(G.destroyAp(d, g))],
       ['Линки', `${g.inc} вх / ${g.out} исх` +
         (g.extra ? ` <span class="pd-approx" title="рёбра полей, которых нет среди загруженных линков">+${g.extra}</span>` : '')],
-      ['Поля', String(g.fields)],
       ['Защита', sh ? `${sh}%` : dash],
       ['Дальность', range.meanL > 0 ? (range.full ? fmtDist(range.m) : `<s>${fmtDist(range.m)}</s>`) : dash],
       ['Хаки', `${G.hacks(d)} · ${G.cooldownS(d)}с`],
-      ['Энергия', en.max ? `${fmtK(en.cur)} / ${fmtK(en.max)}` : dash],
+      ['Поля', String(g.fields)],
     ];
-    parts.push('<div class="pd-stats">' + rows.map(([k, v, tip]) =>
-      `<div class="pd-st"${tip ? ` title="${tip}"` : ''}><span class="pd-sk">${k}</span><span class="pd-sv">${v}</span></div>`).join('') + '</div>');
+    const thumb = d.photoUrl
+      ? `<button type="button" class="pd-thumb" title="Фото портала"><img src="${esc(d.photoUrl)}" alt="" loading="lazy" referrerpolicy="no-referrer"></button>`
+      : '';
+    parts.push('<div class="pd-top">' + thumb + '<div class="pd-stats">' + rows.map(([k, v, tip]) =>
+      `<div class="pd-st"${tip ? ` title="${esc(tip)}"` : ''}><span class="pd-sk">${k}</span><span class="pd-sv">${v}</span></div>`).join('') + '</div></div>');
 
     // mod slots: 4 fixed columns, label coloured by rarity, owner underneath
     parts.push(`<div class="pd-h">Моды ${mods.length}/4</div>`);
@@ -542,7 +561,7 @@ export function mountPortalCard(engine) {
 
     tapped = null; // the chips are rebuilt below
     bodyEl.innerHTML = parts.join('');
-    bodyEl.querySelector('.pd-photo')?.addEventListener('error', (e) => e.target.remove());
+    bodyEl.querySelector('.pd-thumb img')?.addEventListener('error', (e) => e.target.parentElement.remove());
     if (narrow.matches && sheet === 'low') setSheet('low'); // the figures are in: fit them
   }
 

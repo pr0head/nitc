@@ -3,7 +3,7 @@
   position: fixed; right: calc(10px + var(--safe-r)); top: calc(10px + var(--safe-t)); z-index: 1050;
   /* stops above the bottom-right stack: location, zoom, map status
      (--br-h: its live height, ~160px until first measured) */
-  width: 330px; max-width: calc(100vw - 20px); overflow: auto;
+  width: 350px; max-width: calc(100vw - 20px); overflow: auto;
   max-height: calc(100vh - 30px - var(--safe-t) - var(--safe-b) - var(--br-h, 160px));
   background: var(--panel-bg); border: 1px solid var(--line); border-radius: 10px;
   box-shadow: 0 6px 26px #000a; font-size: 13px; color: var(--text);
@@ -26,11 +26,26 @@
 .pd-close:hover { color: #fff; }
 
 .pd-body { padding: 9px 11px; }
-/* never taller than the card is wide: a portrait photo scales down, centred,
-   instead of pushing the stats below the fold (308px = 330 card − padding) */
-.pd-photo {
-  display: block; margin: 2px auto 8px; border-radius: 6px;
-  max-width: 100%; max-height: min(308px, calc(100vw - 42px));
+/* photo thumbnail beside the stats; a tap opens it full size */
+.pd-top { display: flex; gap: 10px; align-items: flex-start; margin: 2px 0; }
+.pd-top .pd-stats { flex: 1; min-width: 0; margin: 0; }
+.pd-thumb {
+  flex: none; width: 64px; height: 64px; padding: 0; overflow: hidden; cursor: zoom-in;
+  background: var(--input); border: 1px solid var(--line); border-radius: 6px;
+}
+.pd-thumb:hover { border-color: var(--accent-dim); }
+.pd-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.pd-lb {
+  position: fixed; inset: 0; z-index: 1500; background: #000d; cursor: zoom-out;
+  display: flex; align-items: center; justify-content: center;
+  padding: calc(16px + var(--safe-t)) calc(16px + var(--safe-r)) calc(16px + var(--safe-b)) calc(16px + var(--safe-l));
+}
+.pd-lb[hidden] { display: none !important; }
+.pd-lb img { max-width: 100%; max-height: 100%; border-radius: 8px; box-shadow: 0 6px 26px #000a; }
+.pd-lb-x {
+  position: absolute; top: calc(10px + var(--safe-t)); right: calc(10px + var(--safe-r));
+  width: 40px; height: 40px; background: #0008; border: 0; border-radius: 20px;
+  color: #fff; font-size: 26px; line-height: 1; cursor: pointer;
 }
 .pd-h { font-size: 11px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); margin: 10px 0 4px; }
 .pd-muted { color: var(--dim); }
@@ -40,9 +55,9 @@
 /* 8 figures in 2 columns; grid-auto-flow:column keeps 1-4 left, 5-8 right */
 .pd-stats {
   display: grid; grid-auto-flow: column; grid-template-columns: 1fr 1fr;
-  grid-template-rows: repeat(5, auto); gap: 2px 12px; margin: 2px 0;
+  grid-template-rows: repeat(4, auto); gap: 2px 10px; margin: 2px 0;
 }
-.pd-st { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; min-width: 0; }
+.pd-st { display: flex; align-items: baseline; justify-content: space-between; gap: 4px; min-width: 0; }
 .pd-sk { color: var(--muted); font-size: 12px; flex: none; }
 .pd-sv { font-size: 12px; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pd-sv s { color: var(--dim); }
@@ -101,12 +116,6 @@
   .pd-close { font-size: 26px; padding: 0 8px; }
   .pd-fav { width: 30px; height: 30px; }
   .pd-rchip { height: 52px; }
-}
-/* phones either way up: the figures come first, the photo follows them */
-@media (max-width: 560px), (max-height: 500px) {
-  .pd-body { display: flex; flex-direction: column; }
-  .pd-stats { order: -1; margin-bottom: 8px; }
-  .pd-photo { max-height: min(308px, 45vh); }
 }
 /* a phone on its side: the card hangs under the layers button, down to the
    bottom (over the location button) */

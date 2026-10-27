@@ -218,7 +218,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--font); }
 /* top-right vertical toolbar; an open portal card takes the corner and the
    toolbar steps to its left (card width + gap) */
 .toolbar { position: absolute; top: 10px; right: 10px; z-index: 1000; display: flex; flex-direction: column; gap: 6px; }
-body:has(.pd:not([hidden])) .toolbar { right: calc(10px + min(330px, 100vw - 20px) + 8px); }
+body:has(.pd:not([hidden])) .toolbar { right: calc(10px + min(350px, 100vw - 20px) + 8px); }
 .tb-item { position: relative; }
 .tb-btn {
   display: flex; align-items: center; justify-content: center;
