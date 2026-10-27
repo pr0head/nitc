@@ -17,6 +17,7 @@ import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.FrameLayout;
 import android.window.OnBackInvokedDispatcher;
 
 // The map in a full-screen WebView. Pages of the map stay inside; any other
@@ -37,8 +38,10 @@ public class MainActivity extends Activity {
         super.onCreate(state);
         web = new WebView(this);
         web.setBackgroundColor(0xFF0B0D0D);
-        setContentView(web);
-        keepClearOfSystemBars(web);
+        FrameLayout root = new FrameLayout(this);
+        root.addView(web);
+        setContentView(root);
+        keepClearOfSystemBars(root);
 
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
@@ -107,7 +110,8 @@ public class MainActivity extends Activity {
     }
 
     // Since Android 15 the app draws under the status and navigation bars:
-    // pad the WebView so the map's top-left and bottom controls stay visible.
+    // pad the WebView's container so the map's top-left and bottom controls
+    // stay visible (padding on the WebView itself is ignored by its content).
     private static void keepClearOfSystemBars(View v) {
         if (Build.VERSION.SDK_INT < 30) return;
         v.setOnApplyWindowInsetsListener((view, insets) -> {
