@@ -54,7 +54,12 @@ export function createMap(el, { onStatus, onPortalClick, onUnauthorized, statusE
     crs: crsOf(prefs.baseMap),
     zoomControl: false, attributionControl: true, worldCopyJump: true,
     preferCanvas: true,
-    renderer: L.canvas({ padding: 0.5 }), // draw a bit beyond the viewport → fewer redraws on pan
+    // a margin beyond the viewport, seen while a drag is under way (the canvas
+    // redraws on every moveend anyway). Kept small: the canvas is (1+2·padding)²
+    // of the screen in device pixels, and every filter change re-rasterizes all
+    // of it — 0.5 on a 2× screen was ~23 Mpx and ~250 ms per toggle; 0.1 is
+    // Leaflet's default.
+    renderer: L.canvas({ padding: 0.1 }),
   });
   // only the tile providers' credits, without Leaflet's own prefix (as IITC)
   map.attributionControl.setPrefix('');
