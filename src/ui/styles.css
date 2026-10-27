@@ -17,6 +17,15 @@
 
 * { box-sizing: border-box; }
 html, body, #app { height: 100%; margin: 0; }
+/* A browser that draws the page under the status / navigation bars or a notch
+   (full screen, edge-to-edge, an installed web app) reports their size here;
+   the app keeps clear of them and the strips show the page background. Window-
+   level layers (the portal card, modals) add the same insets themselves. */
+:root {
+  --safe-t: env(safe-area-inset-top, 0px); --safe-r: env(safe-area-inset-right, 0px);
+  --safe-b: env(safe-area-inset-bottom, 0px); --safe-l: env(safe-area-inset-left, 0px);
+}
+#app { box-sizing: border-box; padding: var(--safe-t) var(--safe-r) var(--safe-b) var(--safe-l); }
 body { background: var(--bg); color: var(--text); font-family: var(--font); }
 
 /* ---- login ------------------------------------------------------------- */
@@ -257,7 +266,7 @@ body:has(.pd:not([hidden])) .toolbar { right: calc(10px + min(330px, 100vw - 20p
   .tb-layers { flex-direction: column; gap: 10px; }
   .tb-col { min-width: 0; }
   /* no room beside the button: the panel drops below it, clear of the plate */
-  .tb-panel { top: calc(100% + 8px); right: 0; max-width: calc(100vw - 20px); max-height: calc(100dvh - 80px); }
+  .tb-panel { top: calc(100% + 8px); right: 0; max-width: calc(100vw - 20px); max-height: calc(100dvh - 80px - var(--safe-t) - var(--safe-b)); }
 }
 /* an open panel goes over the portal card and COMM (the plate stays on top) */
 .toolbar:has(.tb-panel:not([hidden])) { z-index: 1150; }

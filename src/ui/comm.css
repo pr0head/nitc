@@ -67,8 +67,8 @@
 @media (max-width: 560px), (max-height: 500px) {
   .comm:not(.comm--open) { display: none; }
   .comm.comm--open {
-    position: fixed; z-index: 1401; top: 16px; bottom: 16px;
-    left: max(16px, calc(50% - 230px)); right: max(16px, calc(50% - 230px)); width: auto; max-width: none;
+    position: fixed; z-index: 1401; top: calc(16px + var(--safe-t)); bottom: calc(16px + var(--safe-b));
+    left: max(16px + var(--safe-l), 50% - 230px); right: max(16px + var(--safe-r), 50% - 230px); width: auto; max-width: none;
   }
   .comm--open + .comm-shade { display: block; position: fixed; inset: 0; z-index: 1400; background: #000a; }
   .comm-toggle.comm-close { font-size: 22px; line-height: 1; }

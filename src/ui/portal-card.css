@@ -1,10 +1,10 @@
 /* Portal card, docked top-right as in IITC (the layers button moves to its left). */
 .pd {
-  position: fixed; right: 10px; top: 10px; z-index: 1050;
+  position: fixed; right: calc(10px + var(--safe-r)); top: calc(10px + var(--safe-t)); z-index: 1050;
   /* stops above the bottom-right stack: location, zoom, map status
      (--br-h: its live height, ~160px until first measured) */
   width: 330px; max-width: calc(100vw - 20px); overflow: auto;
-  max-height: calc(100vh - 30px - var(--br-h, 160px));
+  max-height: calc(100vh - 30px - var(--safe-t) - var(--safe-b) - var(--br-h, 160px));
   background: var(--panel-bg); border: 1px solid var(--line); border-radius: 10px;
   box-shadow: 0 6px 26px #000a; font-size: 13px; color: var(--text);
   scrollbar-width: thin; scrollbar-color: var(--line) transparent;
@@ -108,13 +108,13 @@
 /* a phone on its side: the card hangs under the layers button, down to the
    bottom (over the location button) */
 @media (max-height: 500px) and (min-width: 561px) {
-  .pd { top: 62px; max-height: calc(100dvh - 72px); }
+  .pd { top: calc(62px + var(--safe-t)); max-height: calc(100dvh - 72px - var(--safe-t) - var(--safe-b)); }
 }
 /* upright phones: a bottom sheet across the width (portal-card.js sets its
    height): low — the head and the figures, high — everything, under the plate */
 @media (max-width: 560px) {
   .pd {
-    top: auto; left: 0; right: 0; bottom: 0; width: auto; max-width: none; max-height: none;
+    top: auto; left: var(--safe-l); right: var(--safe-r); bottom: var(--safe-b); width: auto; max-width: none; max-height: none;
     border-width: 1px 0 0; border-radius: 14px 14px 0 0; transition: height 0.18s ease;
   }
   .pd.pd--drag { transition: none; }

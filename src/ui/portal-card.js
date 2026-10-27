@@ -222,7 +222,9 @@ export function mountPortalCard(engine) {
   const headEl = panel.querySelector('.pd-head');
   const TOP_GAP = 62; // under the plate
   let sheet = 'low';
-  const highH = () => innerHeight - TOP_GAP;
+  // the map's height: the window less the system bars' insets, if any
+  const mapH = () => map.getContainer().clientHeight;
+  const highH = () => mapH() - TOP_GAP;
   // the head and the figures grid; before the card loads, a guess
   function lowH() {
     const st = bodyEl.querySelector('.pd-stats');
@@ -242,7 +244,7 @@ export function mountPortalCard(engine) {
   function keepInView(p) {
     if (!ll(p)) return;
     const y = map.latLngToContainerPoint([p.lat, p.lng]).y;
-    const bottom = innerHeight - lowH() - 24;
+    const bottom = mapH() - lowH() - 24;
     if (y > TOP_GAP && y < bottom) return;
     map.panBy([0, y - (TOP_GAP + bottom) / 2]);
   }
