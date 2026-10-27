@@ -35,32 +35,16 @@ import { coarsePointer } from './toolbar.js';
 import { esc } from './esc.js';
 import { errText } from './errors.js';
 import { agentLink } from './agent-card.js';
+import { GROUP, KIND_LABEL, MU_SIGN, fmtTime } from './events.js';
 import { backOpen, backClosed } from './back.js';
 import { phone } from './phone.js';
 
 const OPEN_ZOOM = MAP.minPortalZoom; // a clicked portal opens where portals are visible
-const GROUP = {
-  capture: 'capture', neutralize: 'capture',
-  link_create: 'link', link_destroy: 'link', first_link: 'link',
-  field_create: 'field', field_destroy: 'field',
-};
-// neutral noun forms: a nickname tells nothing about the agent's gender
-const KIND_LABEL = {
-  capture: 'захват', neutralize: 'нейтрализация',
-  link_create: 'линк', link_destroy: 'снос линка', first_link: 'первый линк',
-  field_create: 'поле', field_destroy: 'снос поля',
-};
 const KIND_OPTS = [['all', 'Все события'], ['capture', 'Захваты'], ['link', 'Линки'], ['field', 'Поля']];
 const EXPAND = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>';
 const COMM_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>';
 const COLLAPSE = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>';
 
-const pad = (n) => String(n).padStart(2, '0');
-function fmtTime(ms) {
-  const d = new Date(ms), now = new Date();
-  const hm = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  return d.toDateString() === now.toDateString() ? hm : `${pad(d.getDate())}.${pad(d.getMonth() + 1)} ${hm}`;
-}
 const okLL = (p) => Number.isFinite(p.lat) && Number.isFinite(p.lng);
 
 export function mountComm(container, engine, menu) {
@@ -219,7 +203,6 @@ export function mountComm(container, engine, menu) {
   function mu(ev, sign) {
     return `<span class="comm-mu">${sign}${ev.mu == null ? '?' : ev.mu.toLocaleString('ru-RU')} MU</span>`;
   }
-  const MU_SIGN = { field_create: '+', field_destroy: '−' };
   // a link names both ends (source → target); a field names its first portal
   // in the row (all three are in the tooltip) and carries its MU
   function message(ev) {

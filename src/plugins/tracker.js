@@ -26,6 +26,7 @@ import { createListModal } from '../ui/dialog.js';
 import { coarsePointer } from '../ui/toolbar.js';
 import { agentLink } from '../ui/agent-card.js';
 import { esc } from '../ui/esc.js';
+import { KIND_LABEL } from '../ui/events.js';
 
 const BUCKETS = 4;
 const OPEN_ZOOM = MAP.minPortalZoom; // a portal opens where portals are visible
@@ -35,8 +36,6 @@ const pin = (col) =>
 const lastOf = (a) => a.places[a.places.length - 1];
 const pad = (v) => String(v).padStart(2, '0');
 const hhmm = (t) => { const d = new Date(t); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
-// neutral noun forms, as in COMM: a nickname tells nothing about gender
-const ACT = { capture: 'захват', neutralize: 'нейтрализация', link_create: 'линк', first_link: 'первый линк' };
 const X_ICON = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>';
 
 export function mountTracker(container, engine) {
@@ -127,7 +126,7 @@ export function mountTracker(container, engine) {
     const parts = [];
     for (const x of place.actions) {
       if (x.kind === 'first_link' && links.has(x.target?.id)) continue;
-      const label = x.kind === 'link_create' && firsts.has(x.target?.id) ? ACT.first_link : ACT[x.kind] || x.kind;
+      const label = KIND_LABEL[x.kind === 'link_create' && firsts.has(x.target?.id) ? 'first_link' : x.kind] || x.kind;
       parts.push(esc(label) + (x.target ? ' → ' + esc(x.target.name || 'портал') : ''));
     }
     const text = parts.join(' · ');

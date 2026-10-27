@@ -5,6 +5,11 @@
 // Fields are not in the card — they are counted from the loaded map data
 // (engine.getData()), so they cover what the current viewport loaded.
 //
+// History (on demand): the COMM log of a tiny area around the portal, keeping
+// the events anchored at it — newest first, older pages one tap each, as deep
+// as the server keeps. A link thrown onto this portal from another is that
+// portal's event and doesn't show here.
+//
 // Selection on the map: the portal's own outline turns red (engine), plus the
 // 40 m action circle and, for a fully deployed portal, its max link range
 // (a circle on the sphere: for hundreds of km a projected circle is off).
@@ -13,8 +18,8 @@ import './portal-card.css';
 import { GAME } from '../config.js';
 import { fcol, ll } from '../map/render.js';
 import { geodesicCircle } from '../map/geo.js';
-import { getPortal } from '../api/intel.js';
-import { adaptPortalDetail } from '../adapter/model.js';
+import { getPortal, getActivity } from '../api/intel.js';
+import { adaptPortalDetail, adaptEvent } from '../adapter/model.js';
 import * as G from '../game/portal.js';
 import { favorites } from '../state/favorites.js';
 import { bus, tools } from '../state/bus.js';
@@ -22,6 +27,8 @@ import { coarsePointer } from './toolbar.js';
 import { esc } from './esc.js';
 import { STAR } from './icons.js';
 import { agentLink } from './agent-card.js';
+import { GROUP, KIND_LABEL, MU_SIGN, fmtTime } from './events.js';
+import { errText } from './errors.js';
 import { keys } from '../state/keys.js';
 import { backOpen, backClosed } from './back.js';
 import { narrow } from './phone.js';
@@ -172,9 +179,11 @@ export function mountPortalCard(engine) {
     const ag = e.target.closest('.ag-link');
     if (ag) {
       e.preventDefault(); hideTip(); tapped = null;
-      bus.emit('openAgent', { nick: ag.dataset.nick });
+      bus.emit('openAgent', { id: ag.dataset.id, nick: ag.dataset.nick });
       return;
     }
+    const hb = e.target.closest('.pd-hbtn');
+    if (hb) { loadHist(hb.dataset.h === 'more'); return; }
     if (coarsePointer) {
       // on touch a tap toggles what hover does with a mouse
       const t = e.target.closest(TIPPED);
@@ -343,6 +352,7 @@ export function mountPortalCard(engine) {
   // adapted card (favorites has one in hand), which skips a duplicate request
   async function openPortal(p, detail) {
     panel.hidden = false; tapped = null; hideTip();
+    if (hist?.id !== p.id) { histCtrl?.abort(); hist = null; }
     backOpen(close);
     selectPortal(p);
     cur = { id: p.id, name: p.name, lat: p.lat, lng: p.lng }; paintFav();
@@ -369,6 +379,64 @@ export function mountPortalCard(engine) {
     openPortal(p);
   });
   bus.on('openPortal', ({ portal, detail }) => openPortal(portal, detail));
+
+  // ---- history ----
+  let hist = null;     // { id, items (newest first), next, state: loading|ok|err, err }
+  let histCtrl = null;
+  // ~20 m around the portal: its own events, at most a close neighbour's (dropped)
+  function histBox(d) {
+    const dy = 0.0002, dx = dy / Math.max(0.2, Math.cos((d.lat * Math.PI) / 180));
+    return { w: d.lng - dx, s: d.lat - dy, e: d.lng + dx, n: d.lat + dy };
+  }
+  async function loadHist(more) {
+    const d = shown;
+    if (!d || !ll(d)) return;
+    if (!more || hist?.id !== d.id) hist = { id: d.id, items: [], next: '' };
+    const my = hist;
+    my.state = 'loading'; paintHist();
+    histCtrl?.abort(); histCtrl = new AbortController();
+    try {
+      const r = await getActivity(histBox(d), more ? { cursor: my.next } : {}, histCtrl.signal);
+      if (hist !== my) return;
+      for (const raw of r.items || []) {
+        const ev = adaptEvent(raw);
+        if (ev.portals[0]?.id === my.id && !my.items.some((x) => x.id === ev.id)) my.items.push(ev);
+      }
+      my.next = r.next || ''; my.state = 'ok';
+    } catch (e) {
+      if (e?.name === 'AbortError' || hist !== my) return;
+      my.state = 'err'; my.err = errText(e?.code, e?.retryAfter);
+    }
+    paintHist();
+  }
+  function histRow(ev) {
+    const other = GROUP[ev.kind] === 'link' && ev.portals[1] ? ' → ' + (ev.portals[1].name || 'портал') : '';
+    const mu = MU_SIGN[ev.kind] ? ` ${MU_SIGN[ev.kind]}${ev.mu == null ? '?' : ev.mu.toLocaleString('ru-RU')} MU` : '';
+    const what = (KIND_LABEL[ev.kind] || ev.kind) + other + mu;
+    return `<div class="pd-hrow" title="${esc(`${fmtTime(ev.time)} ${ev.nick}: ${what}`)}">` +
+      `<span class="pd-ht">${fmtTime(ev.time)}</span>` +
+      `<span class="pd-hnick">${agentLink(ev.nick, { id: ev.actorId, color: fcol(ev.faction) })}</span>` +
+      `<span class="pd-hwhat">${esc(what)}</span></div>`;
+  }
+  function histHtml() {
+    const h = hist && hist.id === shown?.id ? hist : null;
+    let s = '<div class="pd-h">История</div>';
+    if (!h) return s + '<button type="button" class="pd-hbtn" data-h="load">Показать историю портала</button>';
+    if (h.items.length) s += `<div class="pd-hlist">${h.items.map(histRow).join('')}</div>`;
+    if (h.state === 'loading') return s + '<div class="pd-muted pd-hnote">загрузка…</div>';
+    if (h.state === 'err') {
+      return s + `<div class="pd-muted pd-hnote">${esc(h.err)}</div>` +
+        `<button type="button" class="pd-hbtn" data-h="${h.next ? 'more' : 'load'}">Повторить</button>`;
+    }
+    if (h.next) return s + '<button type="button" class="pd-hbtn" data-h="more">Ещё</button>';
+    return s + `<div class="pd-muted pd-hnote">${h.items.length
+      ? 'Это всё, что хранит журнал.'
+      : 'В журнале нет событий этого портала: его могли ещё не захватывать, или он распался без атаки.'}</div>`;
+  }
+  function paintHist() {
+    const el = bodyEl.querySelector('.pd-hist');
+    if (el) el.innerHTML = histHtml();
+  }
 
   // ---- render ----
   // the key line follows the key set: re-render the open card when it loads
@@ -468,6 +536,9 @@ export function mountPortalCard(engine) {
         `<button type="button" class="pd-copy" data-copy="${lat},${lng}" title="Скопировать координаты">${COPY}</button>` +
         ` · <a class="pd-share" href="${esc(share)}">ссылка</a></div>`);
     }
+
+    // history last: it grows on demand and must not push the coords out of view
+    parts.push(`<div class="pd-hist">${histHtml()}</div>`);
 
     tapped = null; // the chips are rebuilt below
     bodyEl.innerHTML = parts.join('');

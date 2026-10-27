@@ -125,3 +125,19 @@
     margin-left: -18px; border-radius: 2px; background: var(--line);
   }
 }
+
+/* history: COMM events anchored at the portal, loaded on demand */
+.pd-hbtn {
+  display: block; width: 100%; min-height: 32px; padding: 5px 10px;
+  background: var(--input); color: var(--text); border: 1px solid var(--line); border-radius: 8px;
+  font: 600 12px var(--font); cursor: pointer;
+}
+.pd-hbtn:hover { border-color: var(--accent-dim); color: var(--accent); }
+.pd-hlist { margin-bottom: 6px; }
+.pd-hrow { display: flex; gap: 8px; align-items: baseline; padding: 2px 0; font-size: 12px; white-space: nowrap; }
+.pd-ht { flex: none; color: var(--dim); font-variant-numeric: tabular-nums; }
+.pd-hnick { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+.pd-hnick .ag-link { text-decoration: none; }
+.pd-hwhat { flex: 1 1 0; min-width: 3em; color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
+.pd-hnote { font-size: 12px; line-height: 1.4; margin: 2px 0 6px; }
+@media (pointer: coarse) { .pd-hbtn { min-height: 38px; } }
