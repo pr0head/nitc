@@ -242,8 +242,6 @@ body:has(.pd:not([hidden])) .toolbar { right: calc(10px + min(330px, 100vw - 20p
 .tb-layers { display: flex; gap: 18px; }
 .tb-col { min-width: 172px; }
 .tb-col-h { font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); margin-bottom: 6px; }
-.tb-row { display: flex; align-items: center; gap: 7px; font-size: 13px; padding: 3px 0; cursor: pointer; }
-.tb-row input { accent-color: var(--accent); }
 .tb-sw { display: inline-block; width: 10px; height: 10px; border-radius: 50%; border: 1px solid #000; flex: none; }
 .tb-sep { height: 1px; background: var(--line); margin: 7px 0; }
 .tb-sel { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; padding: 3px 0; }
@@ -254,13 +252,35 @@ body:has(.pd:not([hidden])) .toolbar { right: calc(10px + min(330px, 100vw - 20p
   padding: 3px 6px; font-size: 12px; cursor: pointer; outline: none;
 }
 .tb-sel select:focus { border-color: var(--accent-dim); }
+.tb-sel > select { min-width: 118px; }
+.tb-range { display: flex; align-items: center; gap: 4px; color: var(--muted); }
+/* on/off chips in one row (field highlight) */
+.tb-chips { display: flex; gap: 4px; }
+.tb-chip {
+  background: var(--panel); color: var(--muted);
+  border: 1px solid var(--line); border-radius: 7px;
+  padding: 3px 8px; font: 12px var(--font); cursor: pointer;
+}
+.tb-chip[aria-pressed="true"] { color: var(--accent); border-color: var(--accent-dim); }
+/* type × faction matrix: headings toggle a whole row/column */
+.tb-mx { display: grid; grid-template-columns: 1fr 44px 44px; align-items: center; margin-top: 4px; }
+.tb-mx-h {
+  background: none; border: 0; padding: 4px 0; cursor: pointer;
+  color: var(--muted); font: 600 11px var(--font); letter-spacing: 0.05em; text-align: center;
+}
+.tb-mx-h:hover { color: var(--accent); }
+.tb-mx-row { text-align: left; color: var(--text); font: 13px var(--font); letter-spacing: 0; }
+.tb-mx-cell { display: flex; justify-content: center; padding: 3px 0; cursor: pointer; }
+.tb-mx-cell input { accent-color: var(--accent); cursor: pointer; }
 
 @media (pointer: coarse) {
   .who__menu { height: 38px; }
   .menu-item { padding: 11px 10px; }
   .tb-btn { width: 44px; height: 44px; }
   .tb-panel { right: 50px; max-width: calc(100vw - 70px); }
-  .tb-row { padding: 7px 0; }
+  .tb-sel select, .tb-chip { min-height: 32px; }
+  .tb-mx-h, .tb-mx-cell { min-height: 36px; }
+  .tb-mx-cell input { width: 18px; height: 18px; }
 }
 @media (max-width: 560px) {
   .tb-layers { flex-direction: column; gap: 10px; }

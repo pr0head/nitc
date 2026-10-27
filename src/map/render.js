@@ -3,13 +3,13 @@
 // or filter change. Filters run here against already-loaded data (no refetch).
 //
 // Drawing rules:
-//   fields toggle → field FILL only (no edges)
-//   links toggle  → standalone links AND the 3 edges of every field
+//   fields row → field FILL only (no edges)
+//   links row  → standalone links AND the 3 edges of every field
 //   portals       → fixed-size dot, black outline; selected = thicker red outline
 //   links and field edges follow great circles (geodesicPath), not straight
 //   lines on the projected map
 //   corner portals (link/field ends with no portal data) → smaller dot under
-//                   the portals; faction filter only (no level to filter by)
+//                   the portals; portals row only (no level to filter by)
 import L from 'leaflet';
 import { FACTION } from '../config.js';
 import { geodesicPath } from './geo.js';
@@ -21,19 +21,21 @@ export const PORTAL_R = 7;
 const CORNER_R = 4;
 const SEL_COL = '#ff2d2d';
 
-// Links/fields have no neutral toggle — only the two faction toggles gate them.
-const factionOn = (f, fac) => (fac === 'res' ? !!f.res : fac === 'enl' ? !!f.enl : true);
+// One cell of the type × faction matrix (prefs filters.show). Only the two
+// factions have columns; anything else is never hidden by it.
+const shown = (f, row, fac) => (fac === 'res' || fac === 'enl' ? !!f.show[row][fac] : true);
 
 // Shared visibility predicates — the renderer and the highlight overlay must
-// agree on exactly what is shown. Unclaimed portals obey only their own toggle
-// (no level/faction filter); claimed ones obey level (clamped 1..8) + faction.
+// agree on exactly what is shown. Unclaimed portals are level 0 of the level
+// range (no faction column); claimed ones obey the range (level clamped 1..8)
+// and their faction's portals cell.
 export function portalVisible(p, f) {
-  if (p.faction === 'neu') return !!f.neutral;
-  const lvl = Math.max(1, Math.min(8, p.level || 1));
-  return !!f.levels[lvl] && factionOn(f, p.faction);
+  const lvl = p.faction === 'neu' ? 0 : Math.max(1, Math.min(8, p.level || 1));
+  return lvl >= f.minLevel && lvl <= f.maxLevel && shown(f, 'portals', p.faction);
 }
-export const fieldVisible = (fd, f) => !!f.fields && factionOn(f, fd.faction);
-export const cornerVisible = (p, f) => factionOn(f, p.faction);
+export const fieldVisible = (fd, f) => shown(f, 'fields', fd.faction);
+export const cornerVisible = (p, f) => shown(f, 'portals', p.faction);
+const linkVisible = (l, f) => shown(f, 'links', l.faction);
 
 export function makeGroups(map) {
   // z-order: fields under links under portals.
@@ -55,28 +57,24 @@ export function render(groups, data, { onPortalClick, selectedId, filters: f, st
   groups.links.clearLayers();
   groups.portals.clearLayers();
 
-  if (f.fields) {
-    for (const fd of data.fields) {
-      if (!okField(fd) || !factionOn(f, fd.faction)) continue;
-      L.polygon(ring(fd), {
-        stroke: false, fillColor: fcol(fd.faction), fillOpacity: 0.15, interactive: false,
-      }).addTo(groups.fields);
-    }
+  for (const fd of data.fields) {
+    if (!okField(fd) || !fieldVisible(fd, f)) continue;
+    L.polygon(ring(fd), {
+      stroke: false, fillColor: fcol(fd.faction), fillOpacity: 0.15, interactive: false,
+    }).addTo(groups.fields);
   }
 
-  if (f.links) {
-    for (const fd of data.fields) {
-      if (!okField(fd) || !factionOn(f, fd.faction)) continue;
-      L.polygon(ring(fd), {
-        fill: false, color: fcol(fd.faction), weight: 1.2, opacity: 0.8, interactive: false,
-      }).addTo(groups.links);
-    }
-    for (const l of data.links) {
-      if (!ll(l.a) || !ll(l.b) || !factionOn(f, l.faction)) continue;
-      L.polyline(path(l), {
-        color: fcol(l.faction), weight: 1.3, opacity: 0.8, interactive: false,
-      }).addTo(groups.links);
-    }
+  for (const fd of data.fields) {
+    if (!okField(fd) || !linkVisible(fd, f)) continue;
+    L.polygon(ring(fd), {
+      fill: false, color: fcol(fd.faction), weight: 1.2, opacity: 0.8, interactive: false,
+    }).addTo(groups.links);
+  }
+  for (const l of data.links) {
+    if (!ll(l.a) || !ll(l.b) || !linkVisible(l, f)) continue;
+    L.polyline(path(l), {
+      color: fcol(l.faction), weight: 1.3, opacity: 0.8, interactive: false,
+    }).addTo(groups.links);
   }
 
   // a click opens the regular card: the id is real, /portals/{id} has the rest
