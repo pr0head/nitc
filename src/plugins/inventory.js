@@ -17,25 +17,50 @@ import { esc } from '../ui/esc.js';
 const TTL_MS = 60000;
 const OPEN_ZOOM = 15;
 const ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5v8l9 5 9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg>';
-// Display names; an unknown kind shows as the server wrote it.
+// Item names are the game's own (English) terms, grouped as in the game's
+// inventory; anything unknown lands in "Прочее" under the server's code.
+const GROUPS = [
+  ['res', 'Резонаторы'], ['weapon', 'Оружие'], ['mod', 'Моды'],
+  ['cube', 'Power Cubes'], ['capsule', 'Капсулы'], ['other', 'Прочее'],
+];
 const KIND = {
-  xmp: 'XMP Burster',
-  ultra_strike: 'Ultra Strike',
-  resonator: 'Резонатор',
-  cube: 'Power Cube',
-  lawson: 'Lawson Power Cube',
-  capsule: 'Капсула',
-  mufg: 'MUFG-капсула',
-  quantum: 'Квантовая капсула',
-  ada: 'ADA Refactor',
-  jarvis: 'JARVIS Virus',
-  fracker: 'Portal Fracker',
-  beacon: 'Маяк',
+  resonator: ['res', 'Resonator'],
+  xmp: ['weapon', 'XMP Burster'],
+  ultra_strike: ['weapon', 'Ultra Strike'],
+  ada: ['weapon', 'ADA Refactor'],
+  jarvis: ['weapon', 'JARVIS Virus'],
+  cube: ['cube', 'Power Cube'],
+  lawson: ['cube', 'Lawson Power Cube'],
+  capsule: ['capsule', 'Capsule'],
+  mufg: ['capsule', 'MUFG Capsule'],
+  quantum: ['capsule', 'Quantum Capsule'],
+  fracker: ['other', 'Portal Fracker'],
+  beacon: ['other', 'Beacon'],
 };
+// mods come as <type>_<rarity>: one row per type, the rarities like levels
+const MOD = {
+  shield: 'Portal Shield', aegis: 'AEGIS Shield', link_amp: 'Link Amp', softbank: 'SoftBank Ultra Link',
+  heat_sink: 'Heat Sink', multi_hack: 'Multi-hack', turret: 'Turret', force_amp: 'Force Amp',
+};
+const RARITY = { common: 'C', rare: 'R', very_rare: 'VR' };
+const MOD_RE = /^(.+)_(common|rare|very_rare)$/;
+// → { group, key (the row), name, sub (L3 / VR / '' — a column within the row), order }
+function classify(kind, level) {
+  if (KIND[kind]) {
+    const [group, name] = KIND[kind];
+    return { group, key: kind, name, sub: level > 0 ? 'L' + level : '', order: level };
+  }
+  const m = MOD_RE.exec(kind);
+  const type = m ? m[1] : kind;
+  if (MOD[type]) {
+    const r = m ? m[2] : '';
+    return { group: 'mod', key: type, name: MOD[type], sub: RARITY[r] || '', order: Object.keys(RARITY).indexOf(r) };
+  }
+  return { group: 'other', key: kind, name: kind.replace(/_/g, ' '), sub: level > 0 ? 'L' + level : '', order: level };
+}
 const TABS = [['items', 'Предметы'], ['keys', 'Ключи']];
 
 const n = (v) => v.toLocaleString('ru-RU');
-const kindName = (k) => KIND[k] || k.replace(/_/g, ' ');
 const SORTS = [['name', 'по названию'], ['dist', 'по расстоянию']];
 const fmtDist = (m) => (m >= 1000 ? `${n(+(m / 1000).toFixed(m >= 100000 ? 0 : 1))} км` : `${Math.round(m)} м`);
 
@@ -86,23 +111,31 @@ export function mountInventory(menu, engine) {
     modal.list.innerHTML = parts.join('');
   }
 
-  // one row per kind; levelled kinds list their levels (L1 97 · L2 23)
+  // grouped as in the game; one row per item, its levels or mod rarities
+  // listed (L1 97 · L2 23, C 5 · R 2); rows in the order of the tables above
   function itemsHtml() {
     if (!inv) return `<div class="lm-empty">${loading ? 'загрузка…' : esc(invErr || 'нет данных')}</div>`;
-    const rows = itemRows();
-    if (!rows.length) return '<div class="lm-empty">Предметов нет.</div>';
-    const byKind = new Map();
-    for (const it of rows) {
-      if (!byKind.has(it.kind)) byKind.set(it.kind, []);
-      byKind.get(it.kind).push({ level: it.level | 0, qty: Number(it.quantity) || 0 });
+    const items = itemRows();
+    if (!items.length) return '<div class="lm-empty">Предметов нет.</div>';
+    const rows = new Map(); // key → { group, name, subs: [{ sub, order, qty }] }
+    for (const it of items) {
+      const c = classify(String(it.kind), it.level | 0);
+      if (!rows.has(c.key)) rows.set(c.key, { group: c.group, name: c.name, subs: [] });
+      rows.get(c.key).subs.push({ sub: c.sub, order: c.order, qty: Number(it.quantity) || 0 });
     }
+    const rank = [...Object.keys(KIND), ...Object.keys(MOD)];
+    const at = (k) => (rank.includes(k) ? rank.indexOf(k) : rank.length);
+    const row = (r) => {
+      const sum = r.subs.reduce((s, x) => s + x.qty, 0);
+      const lv = r.subs.some((x) => x.sub) ? r.subs.sort((a, b) => a.order - b.order)
+        .map((x) => `<span class="inv-lv"><b>${esc(x.sub)}</b> ${n(x.qty)}</span>`).join('') : '';
+      return `<div class="inv-row"><span class="inv-k">${esc(r.name)}</span>` +
+        `<span class="inv-lvs">${lv}</span><span class="inv-q">${n(sum)}</span></div>`;
+    };
     return (invErr ? `<div class="lm-empty">${esc(invErr)}</div>` : '') +
-      [...byKind].map(([kind, rows]) => {
-        const sum = rows.reduce((s, r) => s + r.qty, 0);
-        const lv = rows.some((r) => r.level > 0)
-          ? rows.map((r) => `<span class="inv-lv"><b>L${r.level}</b> ${n(r.qty)}</span>`).join('') : '';
-        return `<div class="inv-row"><span class="inv-k">${esc(kindName(kind))}</span>` +
-          `<span class="inv-lvs">${lv}</span><span class="inv-q">${n(sum)}</span></div>`;
+      GROUPS.map(([g, title]) => {
+        const list = [...rows].filter(([, r]) => r.group === g).sort(([a], [b]) => at(a) - at(b) || a.localeCompare(b));
+        return list.length ? `<div class="inv-grp">${title}</div>` + list.map(([, r]) => row(r)).join('') : '';
       }).join('');
   }
 
