@@ -37,13 +37,16 @@ const KIND = {
   fracker: ['other', 'Portal Fracker'],
   beacon: ['other', 'Beacon'],
 };
-// mods come as <type>_<rarity>: one row per type, the rarities like levels
+// mods come as <type>_<rarity>: one row per type, the rarities like levels;
+// a type not listed here is still a mod, named from its code
 const MOD = {
-  shield: 'Portal Shield', aegis: 'AEGIS Shield', link_amp: 'Link Amp', softbank: 'SoftBank Ultra Link',
+  shield: 'Portal Shield', aegis: 'AXA Shield', link_amp: 'Link Amp', softbank: 'SoftBank Ultra Link',
   heat_sink: 'Heat Sink', multi_hack: 'Multi-hack', turret: 'Turret', force_amp: 'Force Amp',
 };
 const RARITY = { common: 'C', rare: 'R', very_rare: 'VR' };
 const MOD_RE = /^(.+)_(common|rare|very_rare)$/;
+// an unknown code as a name: axa_shield → Axa Shield
+const title = (code) => code.split('_').filter(Boolean).map((w) => w[0].toUpperCase() + w.slice(1)).join(' ');
 // → { group, key (the row), name, sub (L3 / VR / '' — a column within the row), order }
 function classify(kind, level) {
   if (KIND[kind]) {
@@ -52,11 +55,11 @@ function classify(kind, level) {
   }
   const m = MOD_RE.exec(kind);
   const type = m ? m[1] : kind;
-  if (MOD[type]) {
+  if (m || MOD[type]) {
     const r = m ? m[2] : '';
-    return { group: 'mod', key: type, name: MOD[type], sub: RARITY[r] || '', order: Object.keys(RARITY).indexOf(r) };
+    return { group: 'mod', key: type, name: MOD[type] || title(type), sub: RARITY[r] || '', order: Object.keys(RARITY).indexOf(r) };
   }
-  return { group: 'other', key: kind, name: kind.replace(/_/g, ' '), sub: level > 0 ? 'L' + level : '', order: level };
+  return { group: 'other', key: kind, name: title(kind), sub: level > 0 ? 'L' + level : '', order: level };
 }
 const TABS = [['items', 'Предметы'], ['keys', 'Ключи']];
 

@@ -29,7 +29,7 @@ import { narrow } from './phone.js';
 const SEL_COL = '#ff2d2d';
 // short slot labels; the label colour is the rarity
 const MOD_SHORT = {
-  shield: 'SH', aegis: 'AG', link_amp: 'LA', softbank: 'SB',
+  shield: 'SH', aegis: 'AX', link_amp: 'LA', softbank: 'SB',
   heat_sink: 'HS', multi_hack: 'MH', turret: 'TU', force_amp: 'FA',
 };
 const RARITY = {

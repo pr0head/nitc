@@ -11,7 +11,7 @@ const strongest = (d, key) =>
 // strongest in full, the rest scaled by their position in the stack
 const stack = (vals, weights) => vals.reduce((s, v, i) => s + v * (weights[i] ?? 0), 0);
 
-// Mitigation from every mod that carries it (shields, aegis), capped.
+// Mitigation from every mod that carries it (shields, AXA), capped.
 export const shieldingPct = (d) =>
   Math.min(GAME.shieldCapPct, strongest(d, 'mitigation').reduce((s, v) => s + v, 0));
 
