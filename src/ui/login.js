@@ -32,6 +32,11 @@ export function showLogin(root, onSuccess) {
       </label>
       <button class="login__btn" type="submit">Войти</button>
       <p class="login__err" hidden></p>
+      <p class="login__hint">
+        NITC — карта, а не сама игра. Нет аккаунта? Установите Netgress
+        и зарегистрируйтесь в игре, затем войдите здесь с теми же email и паролем.
+        <a href="https://netgress.ru" target="_blank" rel="noopener">netgress.ru</a>
+      </p>
     </form>`;
   root.appendChild(el);
 
