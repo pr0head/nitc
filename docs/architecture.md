@@ -103,10 +103,18 @@ Vite + vanilla JS (без тяжёлого фреймворка).
   `npm ci && npm run build` и публикация `dist/` на GitHub Pages
   (`https://pr0head.github.io/nitc/`). В настройках репозитория один раз:
   Settings → Pages → Source: GitHub Actions.
+- Зеркало в РФ: `.github/workflows/mirror.yml` пушит `main` и теги в
+  `gitverse.ru/pr0head/nitc` (секрет `GITVERSE_TOKEN`), там
+  `.gitverse/workflows/pages.yaml` собирает то же самое и публикует на
+  GitVerse Pages (`https://pr0head.gitverse.site/nitc/`). Зеркало только
+  перезаписывается, правки — всегда на GitHub. В GitVerse один раз: CI/CD
+  включён, Settings → Pages → Source: Workflow. Раннер GitVerse исполняет и
+  `.yaml` из `.github/workflows/`, поэтому наши там — `.yml`.
 
 ### CORS и как его обходим
 Сервер Netgress пускает по CORS только перечисленные в контракте origin: два
-интел-origin Ingress и наш `https://pr0head.github.io` (добавлен 26.10.2026).
+интел-origin Ingress и наш `https://pr0head.github.io` (добавлен 26.10.2026);
+`https://pr0head.gitverse.site` (зеркало) владелец обещал добавить 28.10.2026.
 localhost среди них нет (иначе `403 origin_denied`). Запросы **без** Origin
 (не из браузера) проходят с валидным токеном. Отсюда:
 - **dev:** Vite проксирует `/api` → upstream на стороне сервера и срезает

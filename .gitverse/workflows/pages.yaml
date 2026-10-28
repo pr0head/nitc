@@ -1,0 +1,32 @@
+# GitVerse side of the mirror: build the static site and publish it to
+# GitVerse Pages (https://pr0head.gitverse.site/nitc/) on every push to main.
+# The repo here is a copy of GitHub, updated by .github/workflows/mirror.yml.
+# Repo settings once: CI/CD on; Settings → Pages → Source: Workflow.
+# GitVerse also runs .yaml files from .github/workflows — keep those .yml.
+name: Deploy to GitVerse Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      # same /nitc/ base as GitHub Pages: the project site lives at /nitc/ too
+      - run: npm run build
+      - uses: gitverse/upload-pages-artifact@v1.0.0
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: gitverse/deploy-pages@v1.0.0

@@ -1,0 +1,36 @@
+# Mirror main (and tags) to GitVerse on every push; GitVerse then builds and
+# publishes its own copy of the site (.gitverse/workflows/pages.yaml) at
+# https://pr0head.gitverse.site/nitc/ — the mirror for users in Russia.
+# GitHub stays the source of truth: the mirror is force-updated, never edited.
+# Repo secret (Settings → Secrets and variables → Actions):
+#   GITVERSE_TOKEN   GitVerse token with repository access (user pr0head)
+name: Mirror to GitVerse
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# pushes land in order; a newer one supersedes a queued one
+concurrency:
+  group: mirror
+  cancel-in-progress: true
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # full history: the mirror must accept a plain push
+      - name: Push to GitVerse
+        env:
+          GITVERSE_TOKEN: ${{ secrets.GITVERSE_TOKEN }}
+        run: |
+          remote="https://pr0head:${GITVERSE_TOKEN}@gitverse.ru/pr0head/nitc.git"
+          git push --force "$remote" HEAD:refs/heads/main
+          git push --force --tags "$remote"
