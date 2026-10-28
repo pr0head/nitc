@@ -6,9 +6,12 @@
 # The shell only opens the site, so a release that didn't touch android/ (or
 # this workflow) since the previous v* tag builds nothing: its release gets
 # the previous release's APK as is, so /releases/latest always has one.
+# Each release also carries the APK as plain nitc.apk (a stable /latest/download
+# URL); both mirrors' sites pick it up, so after a release we redeploy them.
 # Repo secrets (Settings → Secrets and variables → Actions):
 #   ANDROID_KEYSTORE_B64   base64 of the release keystore (.jks)
 #   ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD
+#   GITVERSE_TOKEN         to rerun the GitVerse Pages build
 name: Android APK
 
 on:
@@ -18,6 +21,7 @@ on:
 
 permissions:
   contents: write # create the release
+  actions: write  # redeploy the site with the new APK
 
 jobs:
   apk:
@@ -89,6 +93,9 @@ jobs:
           gradle -p android "assemble${type^}"
           cp "android/app/build/outputs/apk/$type/app-$type.apk" "nitc-$VERSION_NAME.apk"
 
+      - name: Stable name
+        run: cp nitc-*.apk nitc.apk
+
       - uses: actions/upload-artifact@v7
         with:
           name: nitc-apk
@@ -97,5 +104,21 @@ jobs:
       - if: github.ref_type == 'tag'
         uses: softprops/action-gh-release@v3
         with:
-          files: nitc-*.apk
+          files: |
+            nitc-*.apk
+            nitc.apk
           generate_release_notes: true
+
+      - name: Redeploy both mirrors with the new APK
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITVERSE_TOKEN: ${{ secrets.GITVERSE_TOKEN }}
+        run: |
+          gh workflow run deploy.yml --ref main
+          curl -fsS -X POST \
+            -H "Authorization: Bearer $GITVERSE_TOKEN" \
+            -H "Accept: application/vnd.gitverse.object+json;version=1" \
+            -H "Content-Type: application/json" -d '{}' \
+            "https://api.gitverse.ru/repos/pr0head/nitc/actions/workflows/pages.yaml/dispatches?branch=main" \
+            || echo "::warning::could not rerun the GitVerse Pages build"

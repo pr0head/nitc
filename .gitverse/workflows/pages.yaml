@@ -21,6 +21,12 @@ jobs:
       - run: npm ci
       # same /nitc/ base as GitHub Pages: the project site lives at /nitc/ too
       - run: npm run build
+      # the latest APK from GitHub releases rides along, so users in Russia
+      # download it from this mirror too
+      - name: Latest APK
+        run: >-
+          curl -fsSL -o dist/nitc.apk https://github.com/pr0head/nitc/releases/latest/download/nitc.apk
+          || echo "no nitc.apk in the latest release"
       - uses: actions/upload-pages-artifact@v1.0.0
         with:
           path: dist
