@@ -124,7 +124,7 @@ Vite + vanilla JS (без тяжёлого фреймворка).
 ### CORS и как его обходим
 Сервер Netgress пускает по CORS только перечисленные в контракте origin: два
 интел-origin Ingress и наш `https://pr0head.github.io` (добавлен 26.10.2026);
-`https://pr0head.gitverse.site` (зеркало) владелец обещал добавить 28.10.2026.
+`https://pr0head.gitverse.site` (зеркало) — добавлен 28.10.2026.
 localhost среди них нет (иначе `403 origin_denied`). Запросы **без** Origin
 (не из браузера) проходят с валидным токеном. Отсюда:
 - **dev:** Vite проксирует `/api` → upstream на стороне сервера и срезает
