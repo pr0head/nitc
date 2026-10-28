@@ -14,6 +14,7 @@
 //
 // Geometry belongs to a plan: every save is announced as 'drawChanged' and the
 // plans module persists it; a plan switch hands shapes back via 'drawLoad'.
+// Export copies the plan on screen; import files what it reads as a new plan.
 //
 // Shapes are drawn along great circles, like the links they plan (the stored
 // vertices are unchanged).
@@ -110,8 +111,8 @@ export function mountDrawTools(container, engine, menu) {
   toolBtn(secEdit, 'delete', I.del, 'Удаление: нажмите на фигуру', () => toggleTool('delete'));
 
   const secTools = section();
-  toolBtn(secTools, null, I.imp, 'Импорт IITC JSON', importJson);
-  toolBtn(secTools, null, I.copy, 'Экспорт (копировать IITC JSON)', copyJson);
+  toolBtn(secTools, null, I.imp, 'Импорт IITC JSON — новым планом', importJson);
+  toolBtn(secTools, null, I.copy, 'Экспорт текущего плана (копировать IITC JSON)', copyJson);
   toolBtn(secTools, null, I.clear, 'Очистить всё', clearAll);
 
   const secPlans = section();
@@ -308,16 +309,15 @@ export function mountDrawTools(container, engine, menu) {
     let arr;
     try { arr = JSON.parse(raw); } catch { alertBox('Некорректный JSON'); return; }
     if (!Array.isArray(arr)) { alertBox('Ожидается массив'); return; }
-    let added = 0;
+    const shapes = [];
     for (const it of arr) {
       if (!it || (it.type !== 'polyline' && it.type !== 'polygon') || !Array.isArray(it.latLngs)) continue;
       if (it.latLngs.length < (it.type === 'polyline' ? 2 : 3)) continue;
       if (!it.latLngs.every((c) => c && typeof c.lat === 'number' && typeof c.lng === 'number')) continue;
-      model.push({ type: it.type, latLngs: it.latLngs.map((c) => ({ lat: c.lat, lng: c.lng })), color: it.color || color });
-      added++;
+      shapes.push({ type: it.type, latLngs: it.latLngs.map((c) => ({ lat: c.lat, lng: c.lng })), color: it.color || color });
     }
-    save(); redraw();
-    if (!added) alertBox('Не найдено ни одной корректной фигуры polyline/polygon');
+    if (!shapes.length) { alertBox('Не найдено ни одной корректной фигуры polyline/polygon'); return; }
+    plans.adopt(shapes); // its own plan, not mixed into the one on screen
   }
   async function clearAll() {
     if (!model.length) return;

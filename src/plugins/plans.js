@@ -8,7 +8,8 @@
 // filed as "Черновик <date>"; empty a plan and it disappears, since a plan with
 // nothing in it is not worth a row. Only plans made deliberately (the New plan
 // button) get the "План" prefix, so the list shows what was meant and what
-// just happened.
+// just happened. An import is a plan of its own ("Импорт <date>"): pasting a
+// plan shared from another device or agent never mixes into the one on screen.
 //
 // The draw tools own the live geometry and emit 'drawChanged' on every save;
 // this module owns persistence and hands geometry back with 'drawLoad'.
@@ -107,6 +108,18 @@ function create(name) {
   bus.emit('drawLoad', p.shapes);
   changed();
 }
+function adopt(shapes) {
+  leaveCurrent();
+  const p = newPlan(defaultName('Импорт'), shapes);
+  store.plans.push(p);
+  store.active = p.id;
+  bus.emit('drawLoad', p.shapes);
+  changed();
+  // remember where it lives once the map has got there
+  map.once('moveend', () => { p.view = view(); save(); });
+  const pts = shapes.flatMap((s) => s.latLngs.map((c) => [c.lat, c.lng]));
+  map.fitBounds(pts, { padding: [40, 40], maxZoom: 17 });
+}
 function remove(id) {
   const i = store.plans.findIndex((p) => p.id === id);
   if (i < 0) return;
@@ -140,6 +153,8 @@ export const plans = {
     return p ? p.shapes : [];
   },
   open() { renderList(); modal.open(); },
+  // imported shapes become a new active plan, and the map goes to them
+  adopt,
   async createPrompt() {
     const name = await promptBox('Название нового плана', defaultName('План'), 'Создать');
     if (name != null) create(name);
