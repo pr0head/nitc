@@ -33,6 +33,7 @@ import { errText } from './errors.js';
 import { keys } from '../state/keys.js';
 import { backOpen, backClosed } from './back.js';
 import { narrow } from './phone.js';
+import { myPosition } from './locate.js';
 
 const SEL_COL = '#ff2d2d';
 // short slot labels; the label colour is the rarity
@@ -78,6 +79,15 @@ const fmtK = (n) => (n >= 10000 ? Math.round(n / 1000) + 'k'
 const fmtDist = (m) => (m >= 1000 ? (m / 1000).toFixed(m >= 100000 ? 0 : 1) + ' км' : Math.round(m) + ' м');
 const levelOf = (p) => (p.faction === 'neu' ? 0 : p.level); // unclaimed reads L0
 
+// Yandex Maps with the route already built: from "my location" (the empty start
+// before ~) to the portal. On foot when the portal is a walk away from the last
+// known position, else by car; the mode can be switched in Maps.
+const WALK_M = 2000;
+function routeUrl(d) {
+  const me = myPosition();
+  const walk = me && L.latLng(me).distanceTo([d.lat, d.lng]) <= WALK_M;
+  return `https://yandex.ru/maps/?rtext=~${d.lat.toFixed(6)},${d.lng.toFixed(6)}&rtt=${walk ? 'pd' : 'auto'}`;
+}
 export function mountPortalCard(engine) {
   const map = engine.map;
 
@@ -204,6 +214,8 @@ export function mountPortalCard(engine) {
       }, () => {});
       return;
     }
+    const r = e.target.closest('.pd-route');
+    if (r && shown && ll(shown)) { r.href = routeUrl(shown); return; } // the link opens as usual
     const s = e.target.closest('.pd-share');
     if (s) {
       e.preventDefault();
@@ -547,13 +559,14 @@ export function mountPortalCard(engine) {
       }).join('') + '</div>');
     } else parts.push('<div class="pd-muted">не установлены</div>');
 
-    // coords (+ copy) · share link (#p= deep link)
+    // coords (+ copy) · share link (#p= deep link) · route there in Yandex Maps
     if (ll(d)) {
       const lat = d.lat.toFixed(6), lng = d.lng.toFixed(6);
       const share = `${location.origin}${location.pathname}#p=${encodeURIComponent(d.id)},${lat},${lng}`;
       parts.push(`<div class="pd-coords">${lat}, ${lng}` +
         `<button type="button" class="pd-copy" data-copy="${lat},${lng}" title="Скопировать координаты">${COPY}</button>` +
-        ` · <a class="pd-share" href="${esc(share)}">ссылка</a></div>`);
+        ` · <a class="pd-share" href="${esc(share)}">ссылка</a>` +
+        ` · <a class="pd-route" href="${esc(routeUrl(d))}" target="_blank" rel="noopener">маршрут</a></div>`);
     }
 
     // history last: it grows on demand and must not push the coords out of view
