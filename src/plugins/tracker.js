@@ -133,9 +133,16 @@ export function mountTracker(container, engine) {
     return `<span class="trk-act" title="${text}">${text}</span>`;
   }
 
+  // the places as the open window lists them: rows point into this by index.
+  // The live tracks move on under it (new events, the oldest ageing out), so
+  // looking a row up there would land on another place.
+  let listed = new Map();
+  const listedPortal = (el) => listed.get(el.dataset.key)?.[+el.dataset.i]?.portal;
+
   function paintWindow() {
     const now = Date.now();
     const list = atPin.map((k) => tracks.get(k)).filter(Boolean);
+    listed = new Map(list.map((a) => [a.key, a.places]));
     if (!list.length) { modal.close(); return; }
     modal.setTitle(list.length === 1 ? 'Трекер агента' : `Агенты здесь: ${list.length}`);
     modal.list.innerHTML = list.map((a) => {
@@ -165,7 +172,7 @@ export function mountTracker(container, engine) {
     const pl = e.target.closest('.trk-p');
     if (pl) {
       e.preventDefault();
-      const p = tracks.get(pl.dataset.key)?.places[+pl.dataset.i]?.portal;
+      const p = listedPortal(pl);
       if (!p) return;
       ring(null); modal.close();
       map.setView([p.lat, p.lng], Math.max(map.getZoom(), OPEN_ZOOM));
@@ -190,7 +197,7 @@ export function mountTracker(container, engine) {
   if (!coarsePointer) {
     modal.list.addEventListener('mouseover', (e) => {
       const a = e.target.closest('.trk-now, .trk-row')?.querySelector('.trk-p');
-      ring(a ? tracks.get(a.dataset.key)?.places[+a.dataset.i]?.portal : null);
+      ring(a ? listedPortal(a) : null);
     });
     modal.list.addEventListener('mouseleave', () => ring(null));
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') ring(null); });
