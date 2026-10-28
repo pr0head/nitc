@@ -11,6 +11,9 @@ import { showApp } from './ui/app.js';
 
 const root = document.getElementById('app');
 
+// the bundle made it: stop the boot watchdog in index.html, drop its screen
+window.__nitcBooted?.();
+
 function toApp() {
   showApp(root);
 }

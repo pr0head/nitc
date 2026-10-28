@@ -9,8 +9,71 @@
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
     <meta name="theme-color" content="#0b0d0d" />
+    <!-- the boot screen: shown until the bundle runs, so it can't rely on its CSS -->
+    <style>
+      html, body { margin: 0; height: 100%; background: #0b0d0d; }
+      #boot {
+        position: fixed; inset: 0; z-index: 10000;
+        display: grid; place-items: center; padding: 24px; text-align: center;
+        color: #8b9a98; font: 15px/1.4 -apple-system, system-ui, "Segoe UI", Roboto, Arial, sans-serif;
+      }
+      #boot > div { max-width: 340px; }
+      #boot p { margin: 0 0 8px; }
+      #boot a { display: inline-block; padding: 10px 12px; color: #5fe3c4; }
+      #boot a[hidden] { display: none; }
+    </style>
   </head>
   <body>
+    <div id="boot"><div><p id="boot-msg">Загрузка…</p><a id="boot-alt" hidden>Открыть зеркало</a></div></div>
+    <script>
+      // Boot watchdog. NITC is published on two mirrors; some networks reach
+      // only one of them, and then the page loads but its bundle stalls. If the
+      // bundle hasn't run in time (or fails outright), switch to the other
+      // mirror, keeping the deep link. `?mirror=1` marks a switched page: it
+      // never bounces back, it just says what went wrong. The Android app picks
+      // its mirror itself, so here it only reports.
+      (function () {
+        var MIRRORS = ['https://pr0head.gitverse.site', 'https://pr0head.github.io'];
+        var WAIT = 15000, HINT = 5000; // ms: give up / offer the mirror early
+        var here = MIRRORS.indexOf(location.origin);
+        var other = here < 0 ? '' : MIRRORS[1 - here] + location.pathname + '?mirror=1' + location.hash;
+        var switched = /[?&]mirror=1(&|$)/.test(location.search);
+        var inApp = /NITC-Android\//.test(navigator.userAgent);
+        var box = document.getElementById('boot');
+        var msg = document.getElementById('boot-msg');
+        var alt = document.getElementById('boot-alt');
+        var over = false;
+        if (other && !inApp) alt.href = other;
+
+        function offer() { if (other && !inApp && !over) alt.hidden = false; }
+        function fail() {
+          if (over) return;
+          over = true;
+          if (other && !switched && !inApp && navigator.onLine !== false) {
+            msg.textContent = 'Не получается загрузить NITC, переключаемся на зеркало…';
+            location.replace(other);
+          } else {
+            msg.textContent = 'NITC не загрузился. Проверьте интернет и обновите страницу.';
+            if (other && !inApp) alt.hidden = false;
+          }
+        }
+        var hint = here < 0 ? 0 : setTimeout(offer, HINT);
+        var give = here < 0 ? 0 : setTimeout(fail, WAIT);
+        // the bundle or its stylesheet failed to load at all
+        addEventListener('error', function (e) {
+          var t = e.target;
+          if (here >= 0 && t && (t.tagName === 'SCRIPT' || (t.tagName === 'LINK' && t.rel === 'stylesheet'))) fail();
+        }, true);
+
+        // called by the bundle as soon as it runs
+        window.__nitcBooted = function () {
+          clearTimeout(hint); clearTimeout(give);
+          over = true;
+          box.remove();
+          if (switched) history.replaceState(history.state, '', location.pathname + location.hash);
+        };
+      })();
+    </script>
     <div id="app"></div>
     <script type="module" src="/src/main.js"></script>
   </body>
