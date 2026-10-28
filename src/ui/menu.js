@@ -53,9 +53,12 @@ export function createMenu(plate) {
       const s = document.createElement('div'); s.className = 'menu-sep'; list.append(s);
       return s;
     },
-    // small muted text, e.g. the version at the very bottom
-    note(text) {
-      const n = document.createElement('div'); n.className = 'menu-note'; n.textContent = text; list.append(n);
+    // small muted text, e.g. the version at the very bottom; href makes it a link
+    note(text, href) {
+      const n = document.createElement(href ? 'a' : 'div');
+      n.className = 'menu-note'; n.textContent = text;
+      if (href) { n.href = href; n.target = '_blank'; n.rel = 'noopener'; n.addEventListener('click', close); }
+      list.append(n);
       return n;
     },
     refresh: paint,

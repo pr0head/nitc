@@ -1,5 +1,8 @@
 // Where the Android app lives, and whether we already run inside it.
-export const APK_URL = 'https://github.com/pr0head/nitc/releases/latest';
+const RELEASES = 'https://github.com/pr0head/nitc/releases';
+export const APK_URL = `${RELEASES}/latest`;
+// one release's notes (and its APK)
+export const releaseUrl = (v) => `${RELEASES}/tag/v${v}`;
 // the Android shell appends this to its user agent
 const shell = navigator.userAgent.match(/NITC-Android\/(\S+)/);
 export const inAndroidApp = !!shell;

@@ -223,7 +223,10 @@ body { background: var(--bg); color: var(--text); font-family: var(--font); }
 .menu-item.on .menu-ck { display: flex; }
 .menu-item.on .menu-ic { color: var(--accent); }
 .menu-sep { height: 1px; background: var(--line); margin: 5px 4px; }
-.menu-note { padding: 4px 9px 2px; color: var(--dim); font-size: 11px; }
+.menu-note { display: block; padding: 4px 9px 2px; color: var(--dim); font-size: 11px; text-decoration: none; }
+a.menu-note { padding: 8px 9px; border-radius: 7px; }
+a.menu-note:hover { color: var(--accent); background: var(--hover); }
+@media (pointer: coarse) { a.menu-note { padding: 11px 9px; } }
 
 /* bottom-right map status (a Leaflet control between zoom and attribution) */
 .mstat {

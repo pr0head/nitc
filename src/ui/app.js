@@ -32,7 +32,7 @@ import { fcol } from '../map/render.js';
 import { createMenu } from './menu.js';
 import { confirmBox } from './dialog.js';
 import { esc } from './esc.js';
-import { APK_URL, inAndroidApp, androidAppVersion } from './android.js';
+import { APK_URL, inAndroidApp, androidAppVersion, releaseUrl } from './android.js';
 import { version } from '../../package.json';
 
 const LOGOUT_ICON =
@@ -96,8 +96,8 @@ export function showApp(root) {
     },
   });
   // the map comes from the site, so its version is the site's; the app shell
-  // has its own (it is rebuilt only when it changes)
-  menu.note(`NITC ${version}` + (androidAppVersion ? ` · приложение ${androidAppVersion}` : ''));
+  // has its own (it is rebuilt only when it changes). Links to the release notes.
+  menu.note(`NITC ${version}` + (androidAppVersion ? ` · приложение ${androidAppVersion}` : ''), releaseUrl(version));
 
   engine.load(); // initial viewport
   // Start view: a deep link; else the last viewed position (restored by the
