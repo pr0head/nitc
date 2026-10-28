@@ -4,6 +4,7 @@
 import { login } from '../api/auth.js';
 import { session } from '../state/session.js';
 import logoUrl from '../assets/logo.jpg';
+import { APK_URL, androidBrowser } from './android.js';
 
 const ERRORS = {
   invalid_credentials: 'Неверный email или пароль.',
@@ -21,7 +22,12 @@ export function showLogin(root, onSuccess) {
     <form class="login__card" autocomplete="on" novalidate>
       <img class="login__logo" src="${logoUrl}" alt="NITC" width="88" height="88" />
       <h1 class="login__title">NITC</h1>
-      <p class="login__sub">Интел-карта Netgress. Вход под аккаунтом игры.</p>
+      <p class="login__sub">Интел-карта Netgress — карта, а не сама игра.</p>
+      <p class="login__hint">
+        Вход под аккаунтом игры. Нет аккаунта? Установите
+        <a href="https://netgress.ru" target="_blank" rel="noopener">Netgress</a>,
+        зарегистрируйтесь в игре и войдите здесь с теми же email и паролем.
+      </p>
       <label class="login__field">
         <span>Email</span>
         <input name="email" type="email" inputmode="email" autocomplete="username" required />
@@ -32,11 +38,14 @@ export function showLogin(root, onSuccess) {
       </label>
       <button class="login__btn" type="submit">Войти</button>
       <p class="login__err" hidden></p>
-      <p class="login__hint">
-        NITC — карта, а не сама игра. Нет аккаунта? Установите Netgress
-        и зарегистрируйтесь в игре, затем войдите здесь с теми же email и паролем.
-        <a href="https://netgress.ru" target="_blank" rel="noopener">netgress.ru</a>
-      </p>
+      ${androidBrowser ? `
+      <div class="login__apk">
+        <b>NITC для Android</b>
+        <span>Эта же карта отдельным приложением, на весь экран. Вход из браузера
+          в приложение не переносится — удобнее поставить его сразу.
+          На странице релиза скачайте файл <i>.apk</i>.</span>
+        <a class="login__apk-btn" href="${APK_URL}" target="_blank" rel="noopener">Скачать приложение карты</a>
+      </div>` : ''}
     </form>`;
   root.appendChild(el);
 
@@ -46,7 +55,8 @@ export function showLogin(root, onSuccess) {
   const btn = form.querySelector('.login__btn');
   const err = el.querySelector('.login__err');
   email.value = session.email;
-  (email.value ? pass : email).focus();
+  // on an Android browser the keyboard would cover the hints
+  if (!androidBrowser) (email.value ? pass : email).focus();
 
   const fail = (msg) => { err.textContent = msg; err.hidden = false; };
 
