@@ -341,7 +341,11 @@ body:has(.pd:not([hidden])) .toolbar { right: calc(10px + min(350px, 100vw - 20p
 /* "my location" button (Leaflet bar, above zoom) */
 .nitc-locate { display: flex !important; align-items: center; justify-content: center; color: #333; }
 .nitc-locate.on { color: #c98a00; }
-.nitc-locate.follow, .nitc-locate.follow:hover { background: #ffb300; color: #1a1200; }
+/* following: amber, also while hovered or focused (Leaflet's own a:hover/a:focus
+   would turn it light after the tap) */
+.leaflet-bar a.nitc-locate.follow,
+.leaflet-bar a.nitc-locate.follow:hover,
+.leaflet-bar a.nitc-locate.follow:focus { background: #ffb300; color: #1a1200; }
 
 /* "my location" marker: amber, apart from either faction's portals; a pulse
    draws the eye on a phone, the arrow shows where the device points */
