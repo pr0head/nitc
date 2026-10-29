@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="bg">#FF0B0D0D</color>
+    <!-- launcher tile: black, under the amber hexagon and teal N -->
+    <color name="icon_bg">#FF000000</color>
     <style name="Theme.Nitc" parent="android:Theme.Material.NoActionBar">
         <item name="android:windowBackground">@color/bg</item>
         <item name="android:colorBackground">@color/bg</item>

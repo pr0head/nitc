@@ -1,14 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- the favicon's three linked portals, centred in the adaptive-icon safe zone -->
+<!-- the favicon's mark (an N of linked portals in an amber hexagon) on the
+     black background, scaled into the adaptive-icon safe zone -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <group android:translateX="22" android:translateY="22">
+    <group android:scaleX="1.2" android:scaleY="1.2" android:translateX="15.6" android:translateY="15.6">
         <path
-            android:strokeColor="#5FE3C4"
-            android:strokeWidth="4"
-            android:pathData="M38,14a6,6 0,1 0,-12 0a6,6 0,1 0,12 0zM21,46a6,6 0,1 0,-12 0a6,6 0,1 0,12 0zM55,46a6,6 0,1 0,-12 0a6,6 0,1 0,12 0zM32,20L15,40M32,20L49,40M19,46H45" />
+            android:strokeColor="#FFB300"
+            android:strokeWidth="2.4"
+            android:strokeLineJoin="round"
+            android:pathData="M32,10L51.05,21L51.05,43L32,54L12.95,43L12.95,21Z" />
+        <path
+            android:fillColor="#6DDECF"
+            android:pathData="M23.9,48.23Q22.1,32 23.9,15.77L20.1,15.77Q21.9,32 20.1,48.23ZM20.38,16.77Q31.91,32.05 40.38,49.23L43.62,47.23Q32.09,31.95 23.62,14.77ZM43.9,48.23Q42.1,32 43.9,15.77L40.1,15.77Q41.9,32 40.1,48.23Z" />
+        <path
+            android:fillColor="#6DDECF"
+            android:pathData="M27.4,48.23a5.4,5.4 0,1 0,-10.8,0a5.4,5.4 0,1 0,10.8,0zM27.4,15.77a5.4,5.4 0,1 0,-10.8,0a5.4,5.4 0,1 0,10.8,0zM47.4,48.23a5.4,5.4 0,1 0,-10.8,0a5.4,5.4 0,1 0,10.8,0zM47.4,15.77a5.4,5.4 0,1 0,-10.8,0a5.4,5.4 0,1 0,10.8,0z" />
+        <path
+            android:fillColor="#000000"
+            android:pathData="M25.89,48.23a3.89,3.89 0,1 0,-7.78,0a3.89,3.89 0,1 0,7.78,0zM25.89,15.77a3.89,3.89 0,1 0,-7.78,0a3.89,3.89 0,1 0,7.78,0zM45.89,48.23a3.89,3.89 0,1 0,-7.78,0a3.89,3.89 0,1 0,7.78,0zM45.89,15.77a3.89,3.89 0,1 0,-7.78,0a3.89,3.89 0,1 0,7.78,0z" />
+        <path
+            android:fillColor="#6DDECF"
+            android:pathData="M24.7,48.23a2.7,2.7 0,1 0,-5.4,0a2.7,2.7 0,1 0,5.4,0zM24.7,15.77a2.7,2.7 0,1 0,-5.4,0a2.7,2.7 0,1 0,5.4,0zM44.7,48.23a2.7,2.7 0,1 0,-5.4,0a2.7,2.7 0,1 0,5.4,0zM44.7,15.77a2.7,2.7 0,1 0,-5.4,0a2.7,2.7 0,1 0,5.4,0z" />
     </group>
 </vector>

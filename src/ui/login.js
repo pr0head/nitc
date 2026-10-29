@@ -3,7 +3,6 @@
 // back to the boot flow via onSuccess.
 import { login } from '../api/auth.js';
 import { session } from '../state/session.js';
-import logoUrl from '../assets/logo.jpg';
 import { APK_URL, androidBrowser } from './android.js';
 
 const ERRORS = {
@@ -20,7 +19,7 @@ export function showLogin(root, onSuccess) {
   el.className = 'login';
   el.innerHTML = `
     <form class="login__card" autocomplete="on" novalidate>
-      <img class="login__logo" src="${logoUrl}" alt="NITC" width="88" height="88" />
+      <img class="login__logo" src="${import.meta.env.BASE_URL}favicon.svg" alt="NITC" width="88" height="88" />
       <h1 class="login__title">NITC</h1>
       <p class="login__sub">Интел-карта Netgress — карта, а не сама игра.</p>
       <p class="login__hint">
