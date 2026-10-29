@@ -27,7 +27,17 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm run build
+      # the latest release's APK version (nitc-X.apk), so the map can tell an
+      # out-of-date app; left empty if the release can't be read
+      - name: Build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          export VITE_APK_VERSION=$(curl -fsSL -H "Authorization: Bearer $GH_TOKEN" \
+            https://api.github.com/repos/pr0head/nitc/releases/latest \
+            | grep -o '"name": *"nitc-[0-9.]*[0-9]\.apk"' | grep -o '[0-9][0-9.]*[0-9]' | head -1)
+          echo "latest APK: ${VITE_APK_VERSION:-unknown}"
+          npm run build
       # the latest APK rides along: the site offers it from its own origin
       - name: Latest APK
         run: >-

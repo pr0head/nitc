@@ -4,18 +4,19 @@ import './dialog.css';
 import { backOpen, backClosed } from './back.js';
 
 // → Promise: the field's text (prompt), true (confirm/alert OK), null (cancel).
-function openDialog({ message, okLabel = 'OK', cancel = true, initial = null }) {
+function openDialog({ message, okLabel = 'OK', cancel = true, cancelLabel = 'Отмена', initial = null }) {
   return new Promise((resolve) => {
     const al = document.createElement('div');
     al.className = 'dlg';
     al.innerHTML = '<div class="dlg-box"><div class="dlg-msg"></div>' +
       (initial == null ? '' : '<input type="text" class="dlg-field">') +
       '<div class="dlg-btns">' +
-      (cancel ? '<button type="button" class="dlg-cancel">Отмена</button>' : '') +
+      (cancel ? '<button type="button" class="dlg-cancel"></button>' : '') +
       '<button type="button" class="dlg-ok"></button></div></div>';
     al.querySelector('.dlg-msg').textContent = message;
     const ok = al.querySelector('.dlg-ok');
     ok.textContent = okLabel;
+    if (cancel) al.querySelector('.dlg-cancel').textContent = cancelLabel;
     const field = al.querySelector('.dlg-field');
     if (field) field.value = initial;
 
@@ -39,7 +40,7 @@ function openDialog({ message, okLabel = 'OK', cancel = true, initial = null }) 
   });
 }
 
-export const confirmBox = (message, okLabel) => openDialog({ message, okLabel }).then(Boolean);
+export const confirmBox = (message, okLabel, cancelLabel) => openDialog({ message, okLabel, cancelLabel }).then(Boolean);
 export const promptBox = (message, initial, okLabel) => openDialog({ message, okLabel, initial: initial ?? '' });
 export const alertBox = (message) => openDialog({ message, cancel: false });
 

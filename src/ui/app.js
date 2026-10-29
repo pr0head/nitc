@@ -32,7 +32,7 @@ import { fcol } from '../map/render.js';
 import { createMenu } from './menu.js';
 import { confirmBox } from './dialog.js';
 import { esc } from './esc.js';
-import { APK_URL, inAndroidApp, androidAppVersion, releaseUrl } from './android.js';
+import { APK_URL, inAndroidApp, androidAppVersion, releaseUrl, appUpdate, updateUrl } from './android.js';
 import { version } from '../../package.json';
 
 const LOGOUT_ICON =
@@ -87,6 +87,7 @@ export function showApp(root) {
 
   menu.sep();
   if (!inAndroidApp) menu.add({ icon: PHONE_ICON, label: 'Приложение для Android', href: APK_URL });
+  if (appUpdate) menu.add({ icon: PHONE_ICON, label: `Обновить до ${appUpdate}`, href: updateUrl });
   menu.add({
     icon: LOGOUT_ICON, label: 'Выйти',
     onClick: async () => {
@@ -105,7 +106,25 @@ export function showApp(root) {
   // unavailable or refused, the default centre from config.
   const linked = openDeepLink(engine);
   mountLocate(engine, { centerOnStart: firstVisit && !linked });
+  offerUpdate();
   return engine;
+}
+
+// A newer app shell: say so once per version, a moment after the map starts;
+// the menu keeps its update item while the app is out of date. Without
+// storage we can't remember the answer, so we stay quiet rather than nag.
+const OFFERED = 'nitc.apkOffered';
+function offerUpdate() {
+  if (!appUpdate) return;
+  try {
+    if (localStorage.getItem(OFFERED) === appUpdate) return;
+    localStorage.setItem(OFFERED, appUpdate);
+  } catch { return; }
+  setTimeout(async () => {
+    const msg = `Вышла новая версия приложения: ${appUpdate} (у вас ${androidAppVersion}). ` +
+      'Скачайте её и установите поверх старой.';
+    if (await confirmBox(msg, 'Скачать', 'Позже')) location.assign(updateUrl);
+  }, 3000);
 }
 
 // The plate shows the agent — nickname in faction colour and level — once
