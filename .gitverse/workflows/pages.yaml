@@ -21,11 +21,14 @@ jobs:
       - run: npm ci
       # same /nitc/ base as GitHub Pages: the project site lives at /nitc/ too;
       # the latest release's APK version (nitc-X.apk) lets the map tell an
-      # out-of-date app, left empty if the release can't be read
+      # out-of-date app, left empty if the release can't be read. GitHub's API
+      # gave nothing from here, so it comes from the release page's assets.
       - name: Build
         run: |
-          export VITE_APK_VERSION=$(curl -fsSL https://api.github.com/repos/pr0head/nitc/releases/latest \
-            | grep -o '"name": *"nitc-[0-9.]*[0-9]\.apk"' | grep -o '[0-9][0-9.]*[0-9]' | head -1)
+          tag=$(curl -fsSI https://github.com/pr0head/nitc/releases/latest \
+            | grep -i '^location:' | sed 's|.*/tag/||' | tr -d '\r')
+          export VITE_APK_VERSION=$(curl -fsSL "https://github.com/pr0head/nitc/releases/expanded_assets/$tag" \
+            | grep -o 'nitc-[0-9.]*[0-9]\.apk' | head -1 | sed 's/^nitc-//; s/\.apk$//')
           echo "latest APK: ${VITE_APK_VERSION:-unknown}"
           npm run build
       # the latest APK from GitHub releases rides along, so users in Russia
