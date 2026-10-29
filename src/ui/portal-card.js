@@ -18,7 +18,7 @@ import L from 'leaflet';
 import './portal-card.css';
 import { GAME } from '../config.js';
 import { fcol, ll } from '../map/render.js';
-import { geodesicCircle } from '../map/geo.js';
+import { geodesicCircle, destination } from '../map/geo.js';
 import { getPortal, getActivity } from '../api/intel.js';
 import { adaptPortalDetail, adaptEvent } from '../adapter/model.js';
 import * as G from '../game/portal.js';
@@ -76,7 +76,13 @@ const CARET_DOWN = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" 
 
 const fmtK = (n) => (n >= 10000 ? Math.round(n / 1000) + 'k'
   : n >= 1000 ? (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k' : String(Math.round(n)));
-const fmtDist = (m) => (m >= 1000 ? (m / 1000).toFixed(m >= 100000 ? 0 : 1) + ' км' : Math.round(m) + ' м');
+// shields + links breakdown; `approx` when the link count comes from the loaded view
+function mitigationTip(mt, links, approx) {
+  const boost = mt.boost !== 1 ? ` × ${String(+mt.boost.toFixed(2)).replace('.', ',')}` : '';
+  return `щиты ${mt.shields}% + линки ${mt.links}% (${approx ? '≈' : ''}${links} линк.${boost})` +
+    (mt.excess ? `, сверх предела ${mt.excess}%` : '');
+}
+const fmtDist = (m) =>(m >= 1000 ? (m / 1000).toFixed(m >= 100000 ? 0 : 1) + ' км' : Math.round(m) + ' м');
 const levelOf = (p) => (p.faction === 'neu' ? 0 : p.level); // unclaimed reads L0
 
 // Yandex Maps with the route already built: from "my location" (the empty start
@@ -200,9 +206,11 @@ export function mountPortalCard(engine) {
       // on touch a tap toggles what hover does with a mouse
       const t = e.target.closest(TIPPED);
       if (t) {
-        if (t === tapped) { tapped = null; hideTip(); return; }
+        if (t === tapped) { tapped = null; hideTip(); clearReso(); return; }
         tapped = t;
-        showTip(t.getBoundingClientRect(), t.dataset.tip, t.classList.contains('pd-slabel'));
+        const r = t.getBoundingClientRect();
+        showReso(t.dataset.slot);
+        showTip(r, t.dataset.tip, t.classList.contains('pd-slabel'));
         return;
       }
     }
@@ -227,14 +235,18 @@ export function mountPortalCard(engine) {
   if (!coarsePointer) {
     bodyEl.addEventListener('mouseover', (e) => {
       const t = e.target.closest(TIPPED);
-      if (t) showTip(t.getBoundingClientRect(), t.dataset.tip, t.classList.contains('pd-slabel'));
+      if (!t) return;
+      // measure first, then draw the map, then the tip
+      const r = t.getBoundingClientRect();
+      showReso(t.dataset.slot);
+      showTip(r, t.dataset.tip, t.classList.contains('pd-slabel'));
     });
     bodyEl.addEventListener('mouseout', (e) => {
       const t = e.target.closest(TIPPED);
       if (!t || (e.relatedTarget && t.contains(e.relatedTarget))) return;
       // sliding straight onto another slot: its mouseover moves the tip
       if (e.relatedTarget?.closest?.(TIPPED)) return;
-      hideTip();
+      hideTip(); clearReso();
     });
   }
   panel.querySelector('.pd-close').addEventListener('click', close);
@@ -344,7 +356,24 @@ export function mountPortalCard(engine) {
     }).addTo(map);
   }
   map.on('zoomend', applyRange);
+  // a resonator chip under the pointer (or tapped): a line from the portal to
+  // where that resonator stands — the slot's bearing (0 = north, 45° steps) at
+  // its distance. Built once, then only moved.
+  let resoLine = null, resoDot = null;
+  function showReso(slot) {
+    const r = slot != null && shown ? shown.resonators[+slot] : null;
+    if (!r || r.distM == null || !ll(shown)) { clearReso(); return; }
+    const c = [shown.lat, shown.lng], p = destination(c, r.slot * 45, r.distM);
+    if (!resoLine) {
+      resoLine = L.polyline([c, p], { color: SEL_COL, weight: 2, opacity: 0.95, ...OV });
+      resoDot = L.circleMarker(p, { radius: 4, color: SEL_COL, weight: 2, fillColor: SEL_COL, fillOpacity: 0.9, ...OV });
+    }
+    resoLine.setLatLngs([c, p]); resoDot.setLatLng(p);
+    if (!map.hasLayer(resoLine)) { resoLine.addTo(map); resoDot.addTo(map); }
+  }
+  function clearReso() { resoLine?.remove(); resoDot?.remove(); }
   function clearSel() {
+    clearReso();
     selCircle?.remove(); selCircle = null;
     rangeSpec = null;
     rangeCircle?.remove(); rangeCircle = null;
@@ -490,7 +519,7 @@ export function mountPortalCard(engine) {
     const vg = G.graph(d.id, engine.getData());
     const g = pl ? { ...vg, inc: pl.inc, out: pl.out, extra: 0, links: pl.inc + pl.out } : vg;
     const en = G.energy(d);
-    const sh = G.shieldingPct(d);
+    const mt = G.mitigation(d, g.links);
     const resos = d.resonators.filter(Boolean);
     const mods = d.mods.filter(Boolean);
     const dash = '<span class="pd-dash">—</span>';
@@ -515,7 +544,7 @@ export function mountPortalCard(engine) {
       ['AP за снос', String(G.destroyAp(d, g))],
       ['Линки', `${g.inc} вх / ${g.out} исх` +
         (g.extra ? ` <span class="pd-approx" title="рёбра полей, которых нет среди загруженных линков">+${g.extra}</span>` : '')],
-      ['Защита', sh ? `${sh}%` : dash],
+      ['Защита', mt.total ? `${mt.total}%` : dash, mitigationTip(mt, g.links, !pl)],
       ['Дальность', range.meanL > 0 ? (range.full ? fmtDist(range.m) : `<s>${fmtDist(range.m)}</s>`) : dash],
       ['Хаки', `${G.hacks(d)} · ${G.cooldownS(d)}с`],
       ['Поля', String(g.fields)],
@@ -551,8 +580,12 @@ export function mountPortalCard(engine) {
         if (!r) return `<div class="pd-rchip pd-ph" data-tip="${dir} · пусто"></div>`;
         const p = G.resoPct(r);
         const fill = p != null && p <= GAME.weakResoPct ? '#ff5d73' : col;
-        const tip = `${dir} · ${r.xm.cur}/${r.xm.max}` + (p != null ? ` (${Math.round(p)}%)` : '');
-        return `<div class="pd-rchip" style="border-color:${col}" data-tip="${esc(tip)}">` +
+        // level and owner are on the chip; the tip has what doesn't fit — how
+        // far out it stands (hover/tap also draws it on the map) and its XM
+        const tip = `${dir}` + (r.distM != null ? ` · ${Math.round(r.distM)} м` : '') +
+          ` · ${r.xm.cur}/${r.xm.max}` + (p != null ? ` (${Math.round(p)}%)` : '');
+        return `<div class="pd-rchip" style="border-color:${col}"` + (r.distM != null ? ` data-slot="${slot}"` : '') +
+          ` data-tip="${esc(tip)}">` +
           `<span class="pd-rfill" style="height:${p == null ? 0 : Math.round(p)}%;background:${fill}"></span>` +
           `<span class="pd-rlvl">${r.level}</span>` +
           `<span class="pd-rown">${r.owner ? agentLink(r.owner) : '—'}</span></div>`;
@@ -572,7 +605,7 @@ export function mountPortalCard(engine) {
     // history last: it grows on demand and must not push the coords out of view
     parts.push(`<div class="pd-hist">${histHtml()}</div>`);
 
-    tapped = null; // the chips are rebuilt below
+    tapped = null; clearReso(); // the chips are rebuilt below
     bodyEl.innerHTML = parts.join('');
     bodyEl.querySelector('.pd-thumb img')?.addEventListener('error', (e) => e.target.parentElement.remove());
     if (narrow.matches && sheet === 'low') setSheet('low'); // the figures are in: fit them

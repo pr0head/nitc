@@ -34,6 +34,8 @@ export function adaptPortalDetail(j) {
     resonators[r.slot] = {
       slot: r.slot, level: r.level | 0, owner: r.owner || null,
       xm: { cur: r.current_xm | 0, max: r.max_xm | 0 },
+      // metres from the portal centre (API 1.3.0+); null when the server doesn't send it
+      distM: r.distance_m == null || !Number.isFinite(+r.distance_m) ? null : +r.distance_m,
     };
   }
   const mods = new Array(4).fill(null);

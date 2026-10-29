@@ -11,9 +11,23 @@ const strongest = (d, key) =>
 // strongest in full, the rest scaled by their position in the stack
 const stack = (vals, weights) => vals.reduce((s, v, i) => s + v * (weights[i] ?? 0), 0);
 
-// Mitigation from every mod that carries it (shields, AXA), capped.
-export const shieldingPct = (d) =>
-  Math.min(GAME.shieldCapPct, strongest(d, 'mitigation').reduce((s, v) => s + v, 0));
+// Mitigation from every mod that carries it (shields, AXA), uncapped.
+const shieldSum = (d) => strongest(d, 'mitigation').reduce((s, v) => s + v, 0);
+
+// Link mitigation (classic): 400/9·atan(links/e) — ~69% at 100 links, never
+// above ~70%. Link-defense mods (SoftBank) multiply it.
+export const linksMitigationPct = (n) => Math.round((400 / 9) * Math.atan(n / Math.E));
+export const linkDefenseMult = (d) => strongest(d, 'link_defense').reduce((m, v) => m * v, 1);
+
+// Shields + links, capped together; `excess` is what the cap cuts off.
+export function mitigation(d, links) {
+  const shields = shieldSum(d);
+  const boost = linkDefenseMult(d);
+  const linksPct = Math.round(linksMitigationPct(links) * boost);
+  const sum = shields + linksPct;
+  return { shields, links: linksPct, boost, total: Math.min(GAME.shieldCapPct, sum),
+    excess: Math.max(0, sum - GAME.shieldCapPct) };
+}
 
 export const hacks = (d) => GAME.baseHacks + Math.round(stack(strongest(d, 'hacks'), GAME.stackHalf));
 

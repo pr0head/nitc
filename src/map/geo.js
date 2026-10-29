@@ -71,6 +71,15 @@ export function geodesicCircle(c, m, points = 96) {
   return ring;
 }
 
+// The point m metres from c=[lat,lng] along the initial bearing br (degrees
+// clockwise from north), on the sphere.
+export function destination(c, br, m) {
+  const p1 = rad(c[0]), l1 = rad(c[1]), d = m / R, b = rad(br);
+  const p2 = Math.asin(Math.sin(p1) * Math.cos(d) + Math.cos(p1) * Math.sin(d) * Math.cos(b));
+  const l2 = l1 + Math.atan2(Math.sin(b) * Math.sin(d) * Math.cos(p1), Math.cos(d) - Math.sin(p1) * Math.sin(p2));
+  return [deg(p2), deg(l2)];
+}
+
 // Absolute area of a lat/lng ring in m² (spherical excess). ring: [[lat,lng],…].
 export function ringArea(ring) {
   const n = ring.length;
