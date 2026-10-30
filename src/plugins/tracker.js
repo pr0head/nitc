@@ -27,12 +27,26 @@ import { coarsePointer } from '../ui/toolbar.js';
 import { agentLink } from '../ui/agent-card.js';
 import { esc } from '../ui/esc.js';
 import { KIND_LABEL } from '../ui/events.js';
+import { halloweenOn } from '../ui/halloween.js';
 
 const BUCKETS = 4;
 const OPEN_ZOOM = MAP.minPortalZoom; // a portal opens where portals are visible
 const pin = (col) =>
   '<svg width="20" height="28" viewBox="0 0 20 28"><path d="M10 27S2 16.5 2 10a8 8 0 0 1 16 0c0 6.5-8 17-8 17z" ' +
   `fill="${col}" stroke="#000" stroke-width="1.3"/><circle cx="10" cy="10" r="3.2" fill="#000" fill-opacity=".45"/></svg>`;
+// Halloween: the pin becomes a pumpkin in the faction colour, its tip still on
+// the portal
+const FACE = 'M6.3 10.6l1.7-2.2 1.5 2.2zM12.5 10.6l1.5-2.2 1.7 2.2zM6.3 13.4c1.6 2.2 7.8 2.2 9.4 0l-1.3.5-1-.8-.9.8-1-.8-.9.8-1-.8-.9.8-1-.8z';
+const pumpkin = (col) =>
+  '<svg width="22" height="28" viewBox="0 0 22 28">' +
+  `<path d="M8 17.5L11 27l3-9.5z" fill="${col}" stroke="#000" stroke-width="1.1"/>` +
+  '<path d="M11 5c0-2 1-3.4 3-4" fill="none" stroke="#2e7d32" stroke-width="2" stroke-linecap="round"/>' +
+  '<path d="M11 4.6c-1.5-.7-3-.8-4.2-.3C3.6 4.6 1.5 7.6 1.5 11.6s2.6 7.5 6 7.7c1.3.1 2.5-.2 3.5-.7 1 .5 2.2.8 3.5.7 3.4-.2 6-3.7 6-7.7s-2.1-7-5.3-7.3c-1.2-.5-2.7-.4-4.2.3z" ' +
+  `fill="${col}" stroke="#000" stroke-width="1.2"/>` +
+  '<path d="M7.2 4.7c-1.6 2-2 9.5 0 14.4M14.8 4.7c1.6 2 2 9.5 0 14.4" fill="none" stroke="#000" stroke-opacity=".3"/>' +
+  // the carved face glows from inside: a soft halo under a bright fill
+  `<g class="hw-face"><path d="${FACE}" fill="none" stroke="#ff9d00" stroke-width="2.4" stroke-linejoin="round" stroke-opacity=".55"/>` +
+  `<path d="${FACE}" fill="#ffe36b"/></g></svg>`;
 const lastOf = (a) => a.places[a.places.length - 1];
 const pad = (v) => String(v).padStart(2, '0');
 const hhmm = (t) => { const d = new Date(t); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
@@ -93,12 +107,13 @@ export function mountTracker(container, engine) {
       const { portal, time } = lastOf(group[0]);
       const mine = group.some((a) => a.key === focus);
       const fresh = Math.max(0, 1 - (now - time) / TRACK.windowMs);
+      const hw = halloweenOn();
       const icon = L.divIcon({
         className: 'trk-pin',
-        html: pin(fcol(group[0].faction)) + (group.length > 1 ? `<span class="trk-n">${group.length}</span>` : '') +
+        html: (hw ? pumpkin : pin)(fcol(group[0].faction)) + (group.length > 1 ? `<span class="trk-n">${group.length}</span>` : '') +
           (labels ? `<span class="trk-nick" style="color:${fcol(group[0].faction)}">${esc(group[0].nick)}` +
             `${group.length > 1 ? ` <i>+${group.length - 1}</i>` : ''}</span>` : ''),
-        iconSize: [20, 28], iconAnchor: [10, 27],
+        iconSize: hw ? [22, 28] : [20, 28], iconAnchor: hw ? [11, 27] : [10, 27],
       });
       L.marker([portal.lat, portal.lng], {
         icon, pane: 'nitcTrack', keyboard: false, zIndexOffset: mine ? 1000 : 0,
@@ -234,6 +249,7 @@ export function mountTracker(container, engine) {
     if (now !== agentsWas) { agentsWas = now; draw(); }
   });
   map.on('zoomend', draw);
+  bus.on('halloweenChanged', draw);
   // once a minute: drop what aged out of the window, refade the pins
   setInterval(() => {
     tracks.prune();

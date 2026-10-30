@@ -1,16 +1,18 @@
 // Halloween dress-up, 31 Oct – 1 Nov local time (?halloween previews it any
-// day): a night-tinted base map, a pumpkin by the logo, a greeting once a
-// day, bats crossing the screen now and then, and a witch on a broom when a
-// tap just misses a portal. Looks only: no game data or rules change, no
-// requests. One menu switch turns all of it off; bats and the witch never take
-// taps and stay home under "reduce motion".
+// day): a night-tinted base map, a pumpkin by the logo, the tracker's pins as
+// pumpkins, a greeting once a day, bats crossing the screen now and then, and
+// a witch on a broom when a tap hits a portal or a pumpkin, or just misses a
+// portal. Looks only: no game data or rules change, no requests. One menu
+// switch turns all of it off; bats and the witch never take taps and stay
+// home under "reduce motion".
 import { prefs } from '../state/prefs.js';
+import { bus, tools } from '../state/bus.js';
 
 export const PUMPKIN = '<svg class="hw-pumpkin" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">' +
   '<path d="M12 6c.2-1.6 1-3 2.6-3.6" fill="none" stroke="#4caf50" stroke-width="2" stroke-linecap="round"/>' +
   '<ellipse cx="7.5" cy="14" rx="5.5" ry="7.5" fill="#e8730c"/><ellipse cx="16.5" cy="14" rx="5.5" ry="7.5" fill="#e8730c"/>' +
   '<ellipse cx="12" cy="14" rx="5" ry="8" fill="#ff8c1a"/>' +
-  '<path d="M7 12l2.2-2.4L10.4 12zM13.6 12l1.2-2.4L17 12zM7.5 16.2c1.5 1.6 7.5 1.6 9 0l-1.2.4-1-.9-1 .9-1-.9-1 .9-1-.9-1 .9z" fill="#3a1a00"/></svg>';
+  '<g class="hw-face"><path d="M7 12l2.2-2.4L10.4 12zM13.6 12l1.2-2.4L17 12zM7.5 16.2c1.5 1.6 7.5 1.6 9 0l-1.2.4-1-.9-1 .9-1-.9-1 .9-1-.9-1 .9z" fill="#ffe36b" stroke="#c45a00" stroke-width=".6"/></g></svg>';
 const BAT = '<svg viewBox="0 0 48 20" aria-hidden="true"><path d="M24 7c1-2 1.8-3 2.4-1.6L27.6 3l.4 4.4C31 3.6 37 1 48 4c-4.6 1-6.4 3.4-6.2 7-2.6-2.2-5.4-1.6-7 1.6C32.4 9.6 28.6 9.8 24 15c-4.6-5.2-8.4-5.4-10.8-2.4-1.6-3.2-4.4-3.8-7-1.6C6.4 7.4 4.6 5 0 4c11-3 17-.4 20 3.4L20.4 3l1.2 2.4C22.2 4 23 5 24 7z" fill="#3b1655"/></svg>';
 const WITCH = '<svg viewBox="0 0 120 70" aria-hidden="true">' +
   '<path d="M4 50L84 40" stroke="#5a3a1a" stroke-width="3" stroke-linecap="round"/>' +
@@ -50,6 +52,7 @@ export function mountHalloween(app, engine, menu) {
     onClick: () => {
       prefs.set({ halloween: !prefs.halloween });
       applyHalloween();
+      bus.emit('halloweenChanged'); // the tracker's pumpkins
       if (!prefs.halloween) sky.replaceChildren();
     },
   });
@@ -100,13 +103,33 @@ export function mountHalloween(app, engine, menu) {
   // ---- the witch: a tap that just misses a portal -------------------------
   let witchAt = 0;
   map.on('click', (e) => {
-    if (!moving() || prefs.draw || Date.now() - witchAt < WITCH_REST_MS) return;
+    if (!moving() || prefs.draw || Date.now() - witchAt < WITCH_REST_MS || onMarker(e.originalEvent)) return;
     const near = engine.getData().portals.some((p) =>
       Number.isFinite(p.lat) && map.latLngToContainerPoint([p.lat, p.lng]).distanceTo(e.containerPoint) < MISS_PX);
     if (!near || Math.random() >= WITCH_CHANCE) return;
     witchAt = Date.now();
     witch();
   });
+  // a tap on a portal or a tracker pumpkin always sends her out (unless she
+  // is still in the air) — on top of what the tap opens. Not while drawing:
+  // there a portal tap places a point.
+  const sendOut = () => {
+    if (!moving() || tools.drawMode || sky.querySelector('.hw-witch')) return;
+    witchAt = Date.now();
+    witch();
+  };
+  bus.on('portalClick', sendOut);
+  map.getContainer().addEventListener('click', (ev) => { if (ev.target.closest?.('.trk-pin')) sendOut(); });
+  // a tap on a marker (a tracker pumpkin, "me") or in its see-through gaps is
+  // aimed at it, not a miss
+  function onMarker(ev) {
+    if (!ev || ev.clientX == null) return false;
+    if (ev.target?.closest?.('.leaflet-marker-icon')) return true;
+    return [...map.getPane('markerPane').parentNode.querySelectorAll('.leaflet-marker-icon:not(.nitc-pin)')].some((el) => {
+      const r = el.getBoundingClientRect();
+      return ev.clientX >= r.left - 6 && ev.clientX <= r.right + 6 && ev.clientY >= r.top - 6 && ev.clientY <= r.bottom + 6;
+    });
+  }
   if (import.meta.env.DEV) Object.assign(window, { hwFlock: flock, hwWitch: witch }); // try them from the console
   function witch() {
     const w = app.clientWidth, h = app.clientHeight;

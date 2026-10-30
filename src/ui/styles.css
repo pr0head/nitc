@@ -391,6 +391,10 @@ body:has(.pd:not([hidden])) .toolbar { right: calc(10px + min(350px, 100vw - 20p
 .hw-only { display: none; }
 .hw .hw-only { display: inline-flex; }
 .hw-pumpkin { flex: none; }
+/* carved faces glow and flicker like a candle inside */
+.hw-face { animation: hw-candle 2.6s steps(1) infinite; }
+@keyframes hw-candle { 0%, 100% { opacity: 1; } 12% { opacity: 0.78; } 20% { opacity: 1; } 47% { opacity: 0.88; } 55% { opacity: 0.7; } 61% { opacity: 1; } 83% { opacity: 0.85; } }
+@media (prefers-reduced-motion: reduce) { .hw-face { animation: none; } }
 /* night over the base map: the tiles only, portals and links keep their colours */
 .hw .leaflet-tile-pane { filter: invert(1) hue-rotate(200deg) sepia(0.45) saturate(1.6) brightness(0.8) contrast(1.05); }
 .login__pumpkin { position: absolute; right: -10px; bottom: -8px; }
