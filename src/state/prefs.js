@@ -20,6 +20,7 @@ function defaults() {
     // COMM panel: event group filter, faction toggles, expanded or compact
     comm: { kind: 'all', res: true, enl: true, open: false },
     draw: false, // draw tools switched on (plate menu)
+    halloween: true, // the Halloween dress-up, while it is in season (plate menu)
   };
 }
 
@@ -33,6 +34,7 @@ function load() {
     if (s.view && Array.isArray(s.view.center)) d.view = s.view;
     if (s.comm) Object.assign(d.comm, s.comm);
     if (typeof s.draw === 'boolean') d.draw = s.draw;
+    if (typeof s.halloween === 'boolean') d.halloween = s.halloween;
   } catch { /* defaults */ }
   return d;
 }
@@ -68,6 +70,7 @@ export const prefs = {
   get view() { return state.view || null; }, // last {center:[lat,lng], zoom}
   get comm() { return state.comm; },
   get draw() { return state.draw; },
+  get halloween() { return state.halloween; },
   set(patch) {
     state = { ...state, ...patch };
     this.save();

@@ -45,7 +45,8 @@ body { background: var(--bg); color: var(--text); font-family: var(--font); }
   gap: 14px;
   text-align: center;
 }
-.login__logo { align-self: center; border-radius: 16px; }
+.login__logo-box { align-self: center; position: relative; line-height: 0; }
+.login__logo { border-radius: 16px; }
 .login__title {
   margin: 2px 0 0;
   font-size: 26px;
@@ -385,3 +386,28 @@ body:has(.pd:not([hidden])) .toolbar { right: calc(10px + min(350px, 100vw - 20p
 .seg button:hover { color: var(--text); }
 .seg button.on { background: var(--accent-bg); color: var(--accent); }
 @media (pointer: coarse) { .seg button { padding: 9px 8px; } }
+
+/* ---- Halloween (31 Oct – 1 Nov, see ui/halloween.js) -------------------- */
+.hw-only { display: none; }
+.hw .hw-only { display: inline-flex; }
+.hw-pumpkin { flex: none; }
+/* night over the base map: the tiles only, portals and links keep their colours */
+.hw .leaflet-tile-pane { filter: invert(1) hue-rotate(200deg) sepia(0.45) saturate(1.6) brightness(0.8) contrast(1.05); }
+.login__pumpkin { position: absolute; right: -10px; bottom: -8px; }
+.login__pumpkin .hw-pumpkin { width: 36px; height: 36px; filter: drop-shadow(0 2px 4px #000a); }
+/* bats and the witch fly over the map, under the controls, and take no taps */
+.hw-sky { position: absolute; inset: 0; z-index: 950; pointer-events: none; overflow: hidden; }
+.hw-bat, .hw-witch { position: absolute; left: 0; top: 0; will-change: transform; }
+.hw-bat svg { display: block; width: 100%; animation: hw-flap 0.22s ease-in-out infinite alternate; filter: drop-shadow(0 0 3px #ff8c1a); }
+@keyframes hw-flap { from { transform: scaleY(1); } to { transform: scaleY(0.35); } }
+.hw-witch { width: 120px; }
+.hw-witch svg { display: block; width: 100%; filter: drop-shadow(0 0 6px #ff8c1acc); }
+.hw-hello {
+  position: absolute; top: 64px; left: 50%; transform: translateX(-50%); z-index: 1100;
+  display: flex; align-items: center; gap: 8px; padding: 9px 14px; white-space: nowrap;
+  background: var(--panel-bg); border: 1px solid #e8730c; border-radius: 10px;
+  color: #ffb066; font-size: 14px; font-weight: 600; box-shadow: 0 4px 20px #0008;
+  pointer-events: none; transition: opacity 0.6s;
+}
+.hw-hello.out { opacity: 0; }
+@media (prefers-reduced-motion: reduce) { .hw-sky { display: none; } }

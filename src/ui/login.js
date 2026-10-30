@@ -4,6 +4,7 @@
 import { login } from '../api/auth.js';
 import { session } from '../state/session.js';
 import { APK_URL, androidBrowser } from './android.js';
+import { PUMPKIN } from './halloween.js';
 
 const ERRORS = {
   invalid_credentials: 'Неверный email или пароль.',
@@ -19,7 +20,10 @@ export function showLogin(root, onSuccess) {
   el.className = 'login';
   el.innerHTML = `
     <form class="login__card" autocomplete="on" novalidate>
-      <img class="login__logo" src="${import.meta.env.BASE_URL}favicon.svg" alt="NITC" width="88" height="88" />
+      <div class="login__logo-box">
+        <img class="login__logo" src="${import.meta.env.BASE_URL}favicon.svg" alt="NITC" width="88" height="88" />
+        <span class="hw-only login__pumpkin">${PUMPKIN}</span>
+      </div>
       <h1 class="login__title">NITC</h1>
       <p class="login__sub">Интел-карта Netgress — карта, а не сама игра.</p>
       <p class="login__hint">

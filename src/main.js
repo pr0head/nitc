@@ -8,8 +8,10 @@ import { session } from './state/session.js';
 import { validateSession } from './api/auth.js';
 import { showLogin } from './ui/login.js';
 import { showApp } from './ui/app.js';
+import { applyHalloween } from './ui/halloween.js';
 
 const root = document.getElementById('app');
+applyHalloween();
 
 // the bundle made it: stop the boot watchdog in index.html, drop its screen
 window.__nitcBooted?.();

@@ -25,6 +25,7 @@ import { createMapStatus } from './map-status.js';
 import { mountComm } from './comm.js';
 import { mountLocate } from './locate.js';
 import { createPin } from './pin.js';
+import { mountHalloween, PUMPKIN } from './halloween.js';
 import { mountScore } from './score.js';
 import { mountAgentCard } from './agent-card.js';
 import { getMe } from '../api/intel.js';
@@ -73,6 +74,7 @@ export function showApp(root) {
 
   // menu items follow mount order: plugins, then the account section
   const menu = createMenu(root.querySelector('.who'));
+  root.querySelector('.who__brand').insertAdjacentHTML('afterend', `<span class="hw-only">${PUMPKIN}</span>`);
   mountLayers(app, engine);
   mountPlans(engine); // before draw tools: they open the last plan
   mountDrawTools(app, engine, menu);
@@ -83,6 +85,7 @@ export function showApp(root) {
   mountComm(app, engine, menu);
   mountScore(app, menu);
   mountAgentCard();
+  mountHalloween(app, engine, menu); // in season only
   keys.start(); // own key set: card line, key highlight/filter, inventory
   showMe(root.querySelector('.who__me'));
 
