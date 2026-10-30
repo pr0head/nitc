@@ -365,6 +365,17 @@ body:has(.pd:not([hidden])) .toolbar { right: calc(10px + min(350px, 100vw - 20p
   filter: drop-shadow(0 0 1.5px rgba(0, 0, 0, 0.8));
 }
 
+/* linked point (#ll= link): a red reticle, apart from portals, "me" and the
+   tracker; at first its ring echoes outwards */
+.nitc-pin svg { position: absolute; inset: 0; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5)); }
+.nitc-pin__pulse {
+  position: absolute; inset: 0; margin: auto; width: 28px; height: 28px;
+  border: 2.5px solid #ff3b30; border-radius: 50%; opacity: 0;
+}
+.nitc-pin.pulse .nitc-pin__pulse { animation: nitc-pin-pulse 2s ease-out 3; }
+@keyframes nitc-pin-pulse { from { transform: scale(1); opacity: 0.9; } to { transform: scale(2.6); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .nitc-pin.pulse .nitc-pin__pulse { animation: none; } }
+
 /* segmented control: tabs inside panels and cards (one shared style) */
 .seg { display: flex; gap: 2px; padding: 2px; background: var(--input); border: 1px solid var(--line); border-radius: 8px; }
 .seg button {

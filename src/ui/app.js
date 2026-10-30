@@ -24,6 +24,7 @@ import { keys } from '../state/keys.js';
 import { createMapStatus } from './map-status.js';
 import { mountComm } from './comm.js';
 import { mountLocate } from './locate.js';
+import { createPin } from './pin.js';
 import { mountScore } from './score.js';
 import { mountAgentCard } from './agent-card.js';
 import { getMe } from '../api/intel.js';
@@ -104,8 +105,11 @@ export function showApp(root) {
   // Start view: a deep link; else the last viewed position (restored by the
   // engine); else, on a first visit, the device location — and if that is
   // unavailable or refused, the default centre from config.
-  const linked = openDeepLink(engine);
+  const pin = createPin(engine.map);
+  const linked = openDeepLink(engine, pin);
   mountLocate(engine, { centerOnStart: firstVisit && !linked });
+  // a link pasted into the open tab changes only the hash: no reload
+  addEventListener('hashchange', () => openDeepLink(engine, pin));
   offerUpdate();
   return engine;
 }
@@ -145,16 +149,28 @@ async function showMe(el) {
 }
 
 // #p=<id>,<lat>,<lng> centres the map on a portal and opens its card (the
-// card's "ссылка" builds exactly this). Returns whether it did. The link is
-// used up: it leaves the address, so a reload after closing the card doesn't
-// open it again.
-function openDeepLink(engine) {
-  const m = /[#&]p=([^,&]+),(-?[\d.]+),(-?[\d.]+)/.exec(location.hash);
-  if (!m) return false;
+// card's "ссылка" builds exactly this). #ll=<lat>,<lng>[&z=<zoom>] centres on
+// a point and drops a pin there; without z the zoom stays as it was (the last
+// one, or the default). Returns whether a link was opened. The link is used
+// up: it leaves the address, so a reload doesn't open it again.
+function openDeepLink(engine, pin) {
+  const h = location.hash;
+  const p = /[#&]p=([^,&]+),(-?[\d.]+),(-?[\d.]+)/.exec(h);
+  const q = /[#&]ll=(-?[\d.]+),(-?[\d.]+)/.exec(h);
+  if (!p && !q) return false;
   history.replaceState(history.state, '', location.pathname + location.search);
-  const id = decodeURIComponent(m[1]), lat = +m[2], lng = +m[3];
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
-  engine.map.setView([lat, lng], Math.max(engine.map.getZoom(), 17));
-  bus.emit('openPortal', { portal: { id, lat, lng, name: '' } });
+  if (p) {
+    const id = decodeURIComponent(p[1]), lat = +p[2], lng = +p[3];
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
+    engine.map.setView([lat, lng], Math.max(engine.map.getZoom(), 17));
+    bus.emit('openPortal', { portal: { id, lat, lng, name: '' } });
+    return true;
+  }
+  const lat = +q[1], lng = +q[2];
+  if (!(Math.abs(lat) <= 85) || !(Math.abs(lng) <= 180)) return false;
+  const z = /[#&]z=(\d{1,2})(?![\d.])/.exec(h);
+  const zoom = z ? Math.min(Math.max(+z[1], 3), 21) : engine.map.getZoom();
+  engine.map.setView([lat, lng], zoom);
+  pin.show(lat, lng);
   return true;
 }
