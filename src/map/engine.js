@@ -30,6 +30,11 @@ const yHybrid = () => L.layerGroup([
 const gTile = (lyrs) => () => L.tileLayer(
   `https://mt{s}.google.com/vt/lyrs=${lyrs}&x={x}&y={y}&z={z}`,
   { subdomains: '0123', maxZoom: 21, attribution: '© Google' });
+// 2GIS: real tiles up to z20 (204 beyond, and outside its coverage); the
+// online_hd set is 512 px with larger labels, drawn at 256 for sharp HiDPI
+const dgis = () => L.tileLayer(
+  `https://tile{s}.maps.2gis.com/tiles?x={x}&y={y}&z={z}&v=1${window.devicePixelRatio > 1 ? '&ts=online_hd' : ''}`,
+  { subdomains: '0123', maxZoom: 21, maxNativeZoom: 20, attribution: '© 2ГИС' });
 
 // in panel order
 const BASE_MAPS = {
@@ -37,6 +42,7 @@ const BASE_MAPS = {
   yhyb: { label: 'Yandex гибрид', build: yHybrid, crs: L.CRS.EPSG3395 },
   groad: { label: 'Google', build: gTile('m') },
   ghyb: { label: 'Google гибрид', build: gTile('y') },
+  dgis: { label: '2ГИС', build: dgis },
   osm: { label: 'OSM', build: () => L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }) },
 };
 const crsOf = (id) => BASE_MAPS[id].crs || L.CRS.EPSG3857;
