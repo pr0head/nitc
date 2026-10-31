@@ -290,28 +290,42 @@ export function mountPortalCard(engine) {
   narrow.addEventListener('change', () => { if (panel.hidden) return; if (narrow.matches) setSheet('low'); else unsheet(); });
   addEventListener('resize', () => { if (!panel.hidden && narrow.matches) setSheet(sheet); });
 
-  let drag = null; // { y, h, moved }
+  // A release goes by the gesture, not by the halfway mark: a short pull
+  // (SNAP_PX) or a flick (FLICK px/ms) in a direction is enough to switch
+  const SNAP_PX = 48, FLICK = 0.4;
+  let drag = null; // { y, h, moved, pts: recent [y, t] for the flick speed }
   headEl.addEventListener('pointerdown', (e) => {
     if (!narrow.matches || e.target.closest('button, input, label, .pd-groups')) return;
-    drag = { y: e.clientY, h: panel.offsetHeight, moved: false };
+    drag = { y: e.clientY, h: panel.offsetHeight, moved: false, pts: [[e.clientY, e.timeStamp]] };
     headEl.setPointerCapture(e.pointerId);
   });
   headEl.addEventListener('pointermove', (e) => {
     if (!drag) return;
     const dy = drag.y - e.clientY;
+    drag.pts.push([e.clientY, e.timeStamp]);
+    if (drag.pts.length > 6) drag.pts.shift();
     if (!drag.moved && Math.abs(dy) < 6) return;
     drag.moved = true;
     panel.classList.add('pd--drag');
     setSheetH(Math.max(40, Math.min(highH(), drag.h + dy)));
   });
-  const endDrag = () => {
+  const endDrag = (e) => {
     if (!drag) return;
-    const { moved } = drag; drag = null;
+    const { moved, y, pts } = drag; drag = null;
     panel.classList.remove('pd--drag');
     if (!moved) { setSheet(sheet === 'low' ? 'high' : 'low'); return; }
+    const endY = e.clientY ?? pts[pts.length - 1][0];
+    const dy = y - endY; // up is positive
+    // speed over the last ~100 ms of the gesture
+    const [y0, t0] = pts.find(([, t]) => e.timeStamp - t < 100) || pts[pts.length - 1];
+    const v = e.timeStamp > t0 ? (y0 - endY) / (e.timeStamp - t0) : 0;
+    const up = v > FLICK || (dy > SNAP_PX && v > -FLICK);
+    const down = v < -FLICK || (dy < -SNAP_PX && v < FLICK);
     const h = panel.offsetHeight, low = lowH();
-    if (h < low * 0.6) close();
-    else setSheet(h > (low + highH()) / 2 ? 'high' : 'low');
+    if (down && (sheet === 'low' || h < low * 0.6)) close();
+    else if (up) setSheet('high');
+    else if (down) setSheet('low');
+    else setSheet(sheet);
   };
   headEl.addEventListener('pointerup', endDrag);
   headEl.addEventListener('pointercancel', endDrag);
