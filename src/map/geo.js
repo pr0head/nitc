@@ -63,19 +63,24 @@ export function geodesicPath(pts, closed = false) {
 // tests a pair: the planes meet along ±N1×N2, and a crossing is the one of
 // those two points that lies strictly inside both arcs. Arcs sharing an end
 // (links from one portal) meet only there and are never a crossing; on the
-// sphere this holds for any length and across the 180th meridian.
+// sphere this holds for any length and across the 180th meridian. The normals
+// are unit vectors, so the tests below read in angles (metres over R) whatever
+// the links' lengths: a crossing a metre from a portal on a 10 m link counts
+// the same as on a 100 km one.
 const cross = (u, v) => [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
 const dot = (u, v) => u[0] * v[0] + u[1] * v[1] + u[2] * v[2];
-const EPS = 1e-12;
+const EPS_END = 0.01 / R; // a crossing closer than 1 cm to an end is at the end
+const EPS_PAR = 1e-9;     // planes this close in angle: one great circle
 
 // a, b: [lat,lng] → arc
 export function greatArc(a, b) {
   const A = vec(a[0], a[1]), B = vec(b[0], b[1]);
-  return { a, b, A, B, N: cross(A, B) };
+  const N = cross(A, B), n = Math.hypot(N[0], N[1], N[2]) || 1;
+  return { a, b, A, B, N: [N[0] / n, N[1] / n, N[2] / n] };
 }
 
 // strictly between the ends of arc p (shorter than half the globe)
-const inside = (p, P) => dot(cross(p.A, P), p.N) > EPS && dot(cross(P, p.B), p.N) > EPS;
+const inside = (p, P) => dot(cross(p.A, P), p.N) > EPS_END && dot(cross(P, p.B), p.N) > EPS_END;
 const same = (U, V) => Math.abs(U[0] - V[0]) < 1e-9 && Math.abs(U[1] - V[1]) < 1e-9 && Math.abs(U[2] - V[2]) < 1e-9;
 
 // → the crossing [lat,lng] (longitude kept next to p's start), or null
@@ -83,7 +88,7 @@ export function arcsCross(p, q) {
   if (same(p.A, q.A) || same(p.A, q.B) || same(p.B, q.A) || same(p.B, q.B)) return null;
   const L = cross(p.N, q.N);
   const len = Math.hypot(L[0], L[1], L[2]);
-  if (len < EPS) return null; // one great circle: overlapping, not crossing
+  if (len < EPS_PAR) return null; // one great circle: overlapping, not crossing
   for (const s of [1, -1]) {
     const P = [(s * L[0]) / len, (s * L[1]) / len, (s * L[2]) / len];
     if (!inside(p, P) || !inside(q, P)) continue;
