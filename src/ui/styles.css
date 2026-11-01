@@ -367,15 +367,45 @@ body:has(.pd:not([hidden])) .toolbar { right: calc(10px + min(350px, 100vw - 20p
 }
 
 /* linked point (#ll= link): a red reticle, apart from portals, "me" and the
-   tracker; at first its ring echoes outwards */
+   tracker; at first its ring echoes outwards, and once more on a copy. Only
+   the centre takes the pointer: the ring leaves portals under it clickable */
+.leaflet-marker-icon.nitc-pin.leaflet-interactive { pointer-events: none; cursor: default; }
 .nitc-pin svg { position: absolute; inset: 0; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5)); }
 .nitc-pin__pulse {
   position: absolute; inset: 0; margin: auto; width: 28px; height: 28px;
   border: 2.5px solid #ff3b30; border-radius: 50%; opacity: 0;
 }
 .nitc-pin.pulse .nitc-pin__pulse { animation: nitc-pin-pulse 2s ease-out 3; }
+.nitc-pin.flash .nitc-pin__pulse { animation: nitc-pin-pulse 1s ease-out 1; }
 @keyframes nitc-pin-pulse { from { transform: scale(1); opacity: 0.9; } to { transform: scale(2.6); opacity: 0; } }
-@media (prefers-reduced-motion: reduce) { .nitc-pin.pulse .nitc-pin__pulse { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .nitc-pin.pulse .nitc-pin__pulse, .nitc-pin.flash .nitc-pin__pulse { animation: none; } }
+.nitc-pin__grip {
+  position: absolute; inset: 0; margin: auto; width: 36px; height: 36px; border-radius: 50%;
+  pointer-events: auto; cursor: grab; touch-action: none;
+}
+.nitc-pin.drag .nitc-pin__grip { cursor: grabbing; }
+/* coordinates ride above the reticle while it is dragged: a finger hides the point */
+.nitc-pin__ll {
+  position: absolute; left: 50%; bottom: calc(100% + 4px); transform: translateX(-50%);
+  display: none; padding: 3px 7px; border-radius: 6px; white-space: nowrap;
+  background: var(--panel-bg); border: 1px solid var(--line); color: var(--text);
+  font: 600 12px var(--font); font-variant-numeric: tabular-nums;
+}
+.nitc-pin.drag .nitc-pin__ll:not(:empty) { display: block; }
+/* its menu: copy a link to the point, or hide it */
+.nitc-pin-menu .leaflet-popup-content-wrapper {
+  padding: 0; border-radius: 10px; background: var(--panel-bg); color: var(--text);
+  border: 1px solid var(--line); box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+.nitc-pin-menu .leaflet-popup-content { margin: 0; width: auto !important; }
+.nitc-pin-menu .leaflet-popup-tip { background: var(--panel-bg); border: 1px solid var(--line); }
+.nitc-pin-menu__in { display: flex; flex-direction: column; padding: 4px; min-width: 170px; }
+.nitc-pin-menu__in button {
+  min-height: 38px; padding: 0 12px; border: 0; border-radius: 7px; background: none;
+  color: var(--text); font: 600 13px var(--font); text-align: left; cursor: pointer;
+}
+.nitc-pin-menu__in button:hover { background: var(--hover); }
+.nitc-pin-menu__in button.done { color: var(--accent); background: var(--accent-bg); }
 
 /* segmented control: tabs inside panels and cards (one shared style) */
 .seg { display: flex; gap: 2px; padding: 2px; background: var(--input); border: 1px solid var(--line); border-radius: 8px; }
