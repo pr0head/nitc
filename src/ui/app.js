@@ -109,7 +109,7 @@ export function showApp(root) {
   // Start view: a deep link; else the last viewed position (restored by the
   // engine); else, on a first visit, the device location — and if that is
   // unavailable or refused, the default centre from config.
-  const pin = createPin(engine.map);
+  const pin = createPin(engine.map, engine.getData);
   const linked = openDeepLink(engine, pin);
   mountLocate(engine, { centerOnStart: firstVisit && !linked });
   // a link pasted into the open tab changes only the hash: no reload. Back to

@@ -392,6 +392,13 @@ body:has(.pd:not([hidden])) .toolbar { right: calc(10px + min(350px, 100vw - 20p
   font: 600 12px var(--font); font-variant-numeric: tabular-nums;
 }
 .nitc-pin.drag .nitc-pin__ll:not(:empty) { display: block; }
+/* distance to a portal whose action range takes the point in */
+.nitc-pin-reach { width: 0; height: 0; }
+.nitc-pin-reach span {
+  position: absolute; transform: translate(-50%, -50%); padding: 1px 5px; border-radius: 5px; white-space: nowrap;
+  background: var(--panel-bg); border: 1px solid #ff3b30; color: var(--text);
+  font: 600 11px var(--font); font-variant-numeric: tabular-nums;
+}
 /* its menu: copy a link to the point, or hide it */
 .nitc-pin-menu .leaflet-popup-content-wrapper {
   padding: 0; border-radius: 10px; background: var(--panel-bg); color: var(--text);

@@ -12,8 +12,14 @@
 // the layers opened since and returns entries holding an older #ll= of ours:
 // those are history, not a new link — owns() tells them apart, sync() puts
 // the address back in step.
+//
+// Portals whose action range (40 m) takes the point in are tied to it by a
+// dashed line with the distance — what could be done from there. Redrawn as
+// the point is dragged and as the map loads.
 import L from 'leaflet';
 import { promptBox } from './dialog.js';
+import { bus } from '../state/bus.js';
+import { GAME } from '../config.js';
 
 // ring + four ticks pointing in, drawn twice: a white halo under the red so it
 // reads on any base map
@@ -26,13 +32,17 @@ const PULSE_MS = 6000; // three pulses, then the reticle just stands
 const COPIED_MS = 1000; // the "copied" tick, then the menu closes
 
 const fmt = (ll) => `${ll.lat.toFixed(6)},${ll.lng.toFixed(6)}`;
+const REACH = '#ff3b30';
+const LABEL_AT = 0.65; // along the line from the point: clear of the reticle
 
-export function createPin(map) {
+// getData: the loaded viewport (its portals)
+export function createPin(map, getData) {
   map.createPane('nitcPin');
   map.getPane('nitcPin').style.zIndex = 655;
   map.getPane('nitcPin').style.pointerEvents = 'none';
   let marker = null, timer = null, menu = null, copiedT = null;
   const written = new Set(); // every #ll= address this pin has stood for
+  const reach = L.layerGroup().addTo(map); // lines to the portals in range
 
   const hash = () => `#ll=${fmt(marker.getLatLng())}&z=${map.getZoom()}`;
   const bare = () => location.pathname + location.search;
@@ -66,11 +76,33 @@ export function createPin(map) {
     }).addTo(map);
     const label = marker.getElement().querySelector('.nitc-pin__ll');
     marker.on('dragstart', () => { map.closePopup(menu); marker.getElement().classList.add('drag'); });
-    marker.on('drag', () => { label.textContent = fmt(marker.getLatLng()).replace(',', ', '); });
+    marker.on('drag', () => { label.textContent = fmt(marker.getLatLng()).replace(',', ', '); drawReach(); });
     marker.on('dragend', () => { marker.getElement().classList.remove('drag'); keepAddress(); });
     marker.on('click', openMenu);
     pulse('pulse', PULSE_MS);
+    drawReach();
   }
+
+  function drawReach() {
+    reach.clearLayers();
+    if (!marker) return;
+    const at = marker.getLatLng();
+    for (const p of getData().portals) {
+      if (p.lat == null) continue;
+      const ll = L.latLng(p.lat, p.lng);
+      const m = at.distanceTo(ll);
+      if (m > GAME.actionRadiusM) continue;
+      L.polyline([at, ll], {
+        pane: 'nitcPin', color: REACH, weight: 2, opacity: 0.9, dashArray: '5,5', interactive: false,
+      }).addTo(reach);
+      const mid = L.latLng(at.lat + (p.lat - at.lat) * LABEL_AT, at.lng + (p.lng - at.lng) * LABEL_AT);
+      L.marker(mid, {
+        pane: 'nitcPin', interactive: false, keyboard: false,
+        icon: L.divIcon({ className: 'nitc-pin-reach', iconSize: null, html: `<span>${Math.round(m)} м</span>` }),
+      }).addTo(reach);
+    }
+  }
+  bus.on('mapData', drawReach);
 
   function openMenu() {
     const box = L.DomUtil.create('div', 'nitc-pin-menu__in');
@@ -106,6 +138,7 @@ export function createPin(map) {
     if (menu) map.closePopup(menu);
     if (!marker) return;
     marker.remove(); marker = null;
+    reach.clearLayers();
     if (quiet !== true) sync();
   }
 
