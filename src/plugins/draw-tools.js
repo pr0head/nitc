@@ -55,6 +55,7 @@ const I = {
   copy: svg(16, '<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>'),
   imp: svg(16, '<path d="M12 16V4M6 10l6-6 6 6"/><path d="M4 20h16"/>'),
   clear: svg(16, '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>'),
+  done: svg(16, '<path d="M5 12.5l4.5 4.5L19 7.5"/>'),
   // a stack of sheets (the list) and a sheet with a plus (a new one)
   plans: svg(16, '<path d="M8 3h9a2 2 0 0 1 2 2v11"/><rect x="3" y="7" width="12" height="14" rx="2"/><path d="M6.5 12h5M6.5 16h3"/>'),
   newPlan: svg(16, '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M12 8v8M8 12h8"/>'),
@@ -122,6 +123,7 @@ export function mountDrawTools(container, engine, menu) {
   const secTools = section();
   toolBtn(secTools, null, I.imp, 'Импорт IITC JSON — новым планом', importJson);
   toolBtn(secTools, null, I.copy, 'Экспорт текущего плана (копировать IITC JSON)', copyJson);
+  const copyBtn = secTools.lastChild;
   toolBtn(secTools, null, I.clear, 'Очистить всё', clearAll);
 
   const secPlans = section();
@@ -337,9 +339,16 @@ export function mountDrawTools(container, engine, menu) {
     });
     save(); redraw();
   }
+  // a copy leaves nothing to see, so the button flashes a tick once it's done
+  let copiedT = 0;
+  function copied() {
+    clearTimeout(copiedT);
+    copyBtn.classList.add('done'); copyBtn.innerHTML = I.done;
+    copiedT = setTimeout(() => { copyBtn.classList.remove('done'); copyBtn.innerHTML = I.copy; }, 1200);
+  }
   function copyJson() {
     const txt = JSON.stringify(model);
-    if (navigator.clipboard) navigator.clipboard.writeText(txt).catch(() => promptBox('Скопируйте:', txt, 'OK'));
+    if (navigator.clipboard) navigator.clipboard.writeText(txt).then(copied, () => promptBox('Скопируйте:', txt, 'OK'));
     else promptBox('Скопируйте:', txt, 'OK');
   }
   async function importJson() {

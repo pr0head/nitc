@@ -16,6 +16,8 @@
 .draw-color { padding: 0; }
 .draw-btn:hover { background: var(--hover); }
 .draw-btn.on { border-color: var(--accent); color: var(--accent); }
+/* export copied: a brief tick */
+.draw-btn.done { border-color: var(--accent); color: var(--accent); background: var(--accent-bg); }
 
 /* the handle is a transparent grab area (its size set in draw-tools.js), the
    dot is drawn in its middle */
