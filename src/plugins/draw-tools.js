@@ -41,6 +41,7 @@ const touch = matchMedia('(pointer: coarse)');
 const handleSize = () => (touch.matches ? 44 : 20);
 
 const DRAW = ['line', 'triangle'];
+const DEF_COLOR = '#a24ac3'; // as IITC DrawTools: shapes without a colour of their own get it too
 const svg = (s, body) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
 const I = {
   draw: svg(16, '<path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/>'),
@@ -71,7 +72,7 @@ export function mountDrawTools(container, engine, menu) {
   map.getPane(PANE).style.pointerEvents = 'none';
   const OV = { pane: PANE, renderer: L.svg({ pane: PANE }) };
 
-  let active = false, tool = null, color = '#ff2d2d';
+  let active = false, tool = null, color = DEF_COLOR;
   let pts = [], temp = null;
   let ptIds = [];                    // per vertex: the favorite it was picked from, or null
   const layer = L.layerGroup();      // finished shapes
@@ -243,7 +244,7 @@ export function mountDrawTools(container, engine, menu) {
       // only the delete tool needs shapes to catch clicks — otherwise a shape
       // in this raised pane would swallow clicks meant for the portals under
       // it, exactly the ones new vertices snap to
-      const opts = { color: s.color || '#ff2d2d', weight: 2, interactive: active && tool === 'delete', ...OV };
+      const opts = { color: s.color || DEF_COLOR, weight: 2, interactive: active && tool === 'delete', ...OV };
       const geo = geodesicPath(lls, s.type === 'polygon');
       const el = s.type === 'polygon' ? L.polygon(geo, { fillOpacity: 0.08, ...opts }) : L.polyline(geo, opts);
       el.on('click', (ev) => {
@@ -257,7 +258,7 @@ export function mountDrawTools(container, engine, menu) {
           interactive: false, keyboard: false, pane: PANE,
           icon: L.divIcon({
             className: 'draw-farea', iconSize: [90, 14], iconAnchor: [45, 7],
-            html: `<span style="color:${esc(s.color || '#ff2d2d')}">${fmtArea(ringArea(lls))}</span>`,
+            html: `<span style="color:${esc(s.color || DEF_COLOR)}">${fmtArea(ringArea(lls))}</span>`,
           }),
         }).addTo(layer);
       }
