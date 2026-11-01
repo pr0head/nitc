@@ -22,6 +22,10 @@
 // Shapes are drawn along great circles, like the links they plan (the stored
 // vertices are unchanged).
 //
+// Where the plan crosses links already on the map, a red cross marks the spot;
+// a badge atop the panel counts what stands in the plan's way and opens a
+// panel with the fewest portals to take it down (draw-crosses.js).
+//
 // Format = IITC DrawTools JSON: [{type:'polyline'|'polygon', latLngs:[{lat,lng}], color?}]
 import L from 'leaflet';
 import './draw-tools.css';
@@ -34,6 +38,7 @@ import { esc } from '../ui/esc.js';
 import { backOpen, backClosed } from '../ui/back.js';
 import { STAR } from '../ui/icons.js';
 import { createFavPicker } from './draw-favorites.js';
+import { createCrossCheck } from './draw-crosses.js';
 
 // a vertex handle's grab area around its dot: a finger needs far more room
 // than a mouse
@@ -104,6 +109,12 @@ export function mountDrawTools(container, engine, menu) {
     if (key) toolBtns[key] = b;
   }
 
+  // crossings with existing links, on top: a low screen scrolls the panel
+  const secCross = section();
+  toolBtn(secCross, null, '', '', () => {});
+  const crossBtn = secCross.lastChild; crossBtn.classList.add('draw-xbtn');
+  const crosses = createCrossCheck({ map, engine, ov: OV, btn: crossBtn, container, anchor: panel });
+
   const secDraw = section();
   toolBtn(secDraw, 'line', I.line, 'Линия (2 точки) — повторный клик отменяет', () => toggleTool('line'));
   toolBtn(secDraw, 'triangle', I.tri, 'Треугольник (3 точки) — повторный клик отменяет', () => toggleTool('triangle'));
@@ -136,13 +147,13 @@ export function mountDrawTools(container, engine, menu) {
     active = true; panel.hidden = false; prefs.set({ draw: true });
     backOpen(deactivate); // Back leaves the drawing mode
     model = plans.openLast(); // the plan last worked on, if any
-    layer.addTo(map); redraw();
+    layer.addTo(map); crosses.show(); redraw();
   }
   function deactivate() {
     active = false; panel.hidden = true; prefs.set({ draw: false });
     backClosed(deactivate);
     cancelDraw(); setTool(null);
-    map.removeLayer(layer); map.removeLayer(editLayer);
+    map.removeLayer(layer); map.removeLayer(editLayer); crosses.hide();
     tools.drawMode = false;
     tools.release('draw');
   }
@@ -266,6 +277,7 @@ export function mountDrawTools(container, engine, menu) {
       }
     });
     if (active && (tool === 'edit' || tool === 'clone')) renderHandles();
+    crosses.update(model);
   }
   bus.on('highlightChanged', redraw);
 
@@ -286,6 +298,7 @@ export function mountDrawTools(container, engine, menu) {
         const p = ev.target.getLatLng();
         s.latLngs[vi] = { lat: p.lat, lng: p.lng };
         shapeLayers[si]?.setLatLngs(geodesicPath(s.latLngs.map((q) => [q.lat, q.lng]), s.type === 'polygon'));
+        crosses.update(model);
       });
       // redraw, not just save: the area label is a separate marker
       h.on('dragend', () => { save(); redraw(); });

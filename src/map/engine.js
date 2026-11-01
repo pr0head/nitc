@@ -148,6 +148,7 @@ export function createMap(el, { onStatus, onPortalClick, onUnauthorized, statusE
       const data = adaptMap(raw);
       lastData = data;
       paint();
+      bus.emit('mapData', data); // the draw tools' crossings
       onStatus?.({
         loading: false,
         counts: { portals: data.portals.length, corners: data.corners.length, links: data.links.length, fields: data.fields.length },

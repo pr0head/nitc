@@ -4,6 +4,7 @@
 // Events:
 //   portalClick portal              a portal dot was clicked on the map
 //   openPortal  {portal, detail?}   open the card (favorites, deep link)
+//   closePortal                     close the card (another bottom sheet opens)
 //   openAgent   {id?, nick?}        open an agent card (nickname click)
 //   favoritesChanged                the starred list changed
 //   highlightChanged                highlight prefs changed (area labels)
@@ -13,6 +14,7 @@
 //   agentFocus  agent|null          the tracker focused an agent (a phone's COMM folds)
 //   drawChanged shapes              draw tools saved its model
 //   drawLoad    shapes              plans hands draw tools a model to show
+//   mapData     data                the map loaded a viewport (adapted)
 //   toolActivated name              a map tool took over map clicks
 const handlers = new Map();
 

@@ -57,6 +57,42 @@ export function geodesicPath(pts, closed = false) {
   return out;
 }
 
+// ---- crossings --------------------------------------------------------------
+// Two links cross where their great-circle arcs do. greatArc() prepares an arc
+// once (unit vectors of its ends and the normal of its plane), arcsCross()
+// tests a pair: the planes meet along ±N1×N2, and a crossing is the one of
+// those two points that lies strictly inside both arcs. Arcs sharing an end
+// (links from one portal) meet only there and are never a crossing; on the
+// sphere this holds for any length and across the 180th meridian.
+const cross = (u, v) => [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
+const dot = (u, v) => u[0] * v[0] + u[1] * v[1] + u[2] * v[2];
+const EPS = 1e-12;
+
+// a, b: [lat,lng] → arc
+export function greatArc(a, b) {
+  const A = vec(a[0], a[1]), B = vec(b[0], b[1]);
+  return { a, b, A, B, N: cross(A, B) };
+}
+
+// strictly between the ends of arc p (shorter than half the globe)
+const inside = (p, P) => dot(cross(p.A, P), p.N) > EPS && dot(cross(P, p.B), p.N) > EPS;
+const same = (U, V) => Math.abs(U[0] - V[0]) < 1e-9 && Math.abs(U[1] - V[1]) < 1e-9 && Math.abs(U[2] - V[2]) < 1e-9;
+
+// → the crossing [lat,lng] (longitude kept next to p's start), or null
+export function arcsCross(p, q) {
+  if (same(p.A, q.A) || same(p.A, q.B) || same(p.B, q.A) || same(p.B, q.B)) return null;
+  const L = cross(p.N, q.N);
+  const len = Math.hypot(L[0], L[1], L[2]);
+  if (len < EPS) return null; // one great circle: overlapping, not crossing
+  for (const s of [1, -1]) {
+    const P = [(s * L[0]) / len, (s * L[1]) / len, (s * L[2]) / len];
+    if (!inside(p, P) || !inside(q, P)) continue;
+    const lng = deg(Math.atan2(P[1], P[0]));
+    return [deg(Math.asin(Math.max(-1, Math.min(1, P[2])))), lng + 360 * Math.round((p.a[1] - lng) / 360)];
+  }
+  return null;
+}
+
 // A circle of radius m metres on the sphere around c=[lat,lng], as a ring of
 // points (for a link range of hundreds of km a projected circle is off).
 export function geodesicCircle(c, m, points = 96) {

@@ -436,6 +436,7 @@ export function mountPortalCard(engine) {
     openPortal(p);
   });
   bus.on('openPortal', ({ portal, detail }) => openPortal(portal, detail));
+  bus.on('closePortal', () => { if (!panel.hidden) close(); });
 
   // ---- photo, full size: over everything; a tap anywhere, Esc or Back closes ----
   const lb = document.createElement('div');

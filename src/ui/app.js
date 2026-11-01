@@ -21,6 +21,7 @@ import { mountDrawTools } from '../plugins/draw-tools.js';
 import { mountInventory } from '../plugins/inventory.js';
 import { mountTracker } from '../plugins/tracker.js';
 import { keys } from '../state/keys.js';
+import { me as meState } from '../state/me.js';
 import { createMapStatus } from './map-status.js';
 import { mountComm } from './comm.js';
 import { mountLocate } from './locate.js';
@@ -139,6 +140,7 @@ function offerUpdate() {
 async function showMe(el) {
   let me;
   try { me = adaptAgent(await getMe()); } catch { return; }
+  meState.agent = me; // the draw tools' crossings: whose portals need a virus
   if (!me.nick) return;
   el.innerHTML = `<b style="color:${fcol(me.faction)}">${esc(me.nick)}</b> <span class="who__lvl">L${me.level}</span>`;
   // the plate's own name opens the agent's own card
