@@ -16,6 +16,9 @@
 // plans module persists it; a plan switch hands shapes back via 'drawLoad'.
 // Export copies the plan on screen; import files what it reads as a new plan.
 //
+// While the line or triangle tool is on, ★ picks vertices from the favorites
+// (draw-favorites.js) — for portals too far apart to tap on one screen.
+//
 // Shapes are drawn along great circles, like the links they plan (the stored
 // vertices are unchanged).
 //
@@ -29,6 +32,8 @@ import { ringArea, fmtArea, geodesicPath } from '../map/geo.js';
 import { confirmBox, promptBox, alertBox } from '../ui/dialog.js';
 import { esc } from '../ui/esc.js';
 import { backOpen, backClosed } from '../ui/back.js';
+import { STAR } from '../ui/icons.js';
+import { createFavPicker } from './draw-favorites.js';
 
 // a vertex handle's grab area around its dot: a finger needs far more room
 // than a mouse
@@ -68,6 +73,7 @@ export function mountDrawTools(container, engine, menu) {
 
   let active = false, tool = null, color = '#ff2d2d';
   let pts = [], temp = null;
+  let ptIds = [];                    // per vertex: the favorite it was picked from, or null
   const layer = L.layerGroup();      // finished shapes
   const editLayer = L.layerGroup();  // vertex handles (edit/clone)
   let shapeLayers = [];              // index → Leaflet layer
@@ -99,6 +105,8 @@ export function mountDrawTools(container, engine, menu) {
   const secDraw = section();
   toolBtn(secDraw, 'line', I.line, 'Линия (2 точки) — повторный клик отменяет', () => toggleTool('line'));
   toolBtn(secDraw, 'triangle', I.tri, 'Треугольник (3 точки) — повторный клик отменяет', () => toggleTool('triangle'));
+  toolBtn(secDraw, null, STAR(16), 'Вершины из избранного', () => picker.open());
+  const favBtn = secDraw.lastChild; favBtn.hidden = true; // only with line/triangle on
   toolBtn(secDraw, 'clone', I.clone, 'Клон: нажмите вершину, чтобы скопировать фигуру за неё, затем перетащите', () => toggleTool('clone'));
   const colorInp = document.createElement('input');
   colorInp.type = 'color'; colorInp.className = 'draw-color'; colorInp.value = color; colorInp.title = 'Цвет';
@@ -143,6 +151,7 @@ export function mountDrawTools(container, engine, menu) {
     tool = t;
     Object.values(toolBtns).forEach((b) => b.classList.remove('on'));
     if (t && toolBtns[t]) toolBtns[t].classList.add('on');
+    favBtn.hidden = !DRAW.includes(t);
     map.getContainer().style.cursor = DRAW.includes(t) || t === 'delete' ? 'crosshair' : '';
     if (t === 'edit' || t === 'clone') { editLayer.addTo(map); renderHandles(); }
     else { editLayer.clearLayers(); map.removeLayer(editLayer); }
@@ -168,17 +177,46 @@ export function mountDrawTools(container, engine, menu) {
     if (!active || !DRAW.includes(tool)) return;
     if (isDup(latlng)) {
       if (!snapped || lastSnapped || !pts.length) return; // already have the better copy
-      pts.pop(); // swap in the snapped one
+      pts.pop(); ptIds.pop(); // swap in the snapped one
     }
     lastPt = latlng; lastAt = performance.now(); lastSnapped = !!snapped;
-    pts.push(latlng); updateTemp();
+    pts.push(latlng); ptIds.push(null); updateTemp();
     const need = tool === 'line' ? 2 : 3;
     if (pts.length >= need) finalize();
   }
   map.on('click', (e) => addPoint(e.latlng, false));
   // clicking a portal while drawing puts the vertex exactly on it (auto-snap)
   bus.on('portalClick', (p) => { if (p) addPoint(L.latLng(p.lat, p.lng), true); });
-  document.addEventListener('keydown', (e) => { if (active && e.key === 'Escape') cancelDraw(); });
+  // Escape in the picker closes the picker only
+  document.addEventListener('keydown', (e) => { if (active && e.key === 'Escape' && !picker.isOpen) cancelDraw(); });
+
+  // ---- vertices from the favorites ----
+  const picker = createFavPicker({
+    state: () => ({ name: tool === 'line' ? 'Линия' : 'Треугольник', need: tool === 'line' ? 2 : 3, ids: ptIds }),
+    // → true when the pick completed the shape
+    onPick(f) {
+      if (!active || !DRAW.includes(tool)) return true;
+      pts.push(L.latLng(f.lat, f.lng)); ptIds.push(f.id);
+      lastPt = null; // never merged with a map tap
+      if (pts.length < (tool === 'line' ? 2 : 3)) { updateTemp(); return false; }
+      const b = L.latLngBounds(pts);
+      finalize();
+      fit(b);
+      return true;
+    },
+    onUndo() { pts.pop(); ptIds.pop(); if (pts.length) updateTemp(); else cancelDraw(); },
+    // back on the map with a shape half-drawn: bring its vertices into view
+    onClose() {
+      if (!pts.length) return;
+      const b = map.getBounds();
+      if (pts.every((p) => b.contains(p))) return;
+      fit(L.latLngBounds(pts).extend(b.getCenter()));
+    },
+  });
+  // the whole shape in view, clear of the panel on the left and the plate on top
+  const fit = (b) => map.fitBounds(b, {
+    paddingTopLeft: [panel.offsetLeft + panel.offsetWidth + 24, 90], paddingBottomRight: [40, 40], maxZoom: 17,
+  });
 
   function updateTemp() {
     temp?.remove();
@@ -191,7 +229,7 @@ export function mountDrawTools(container, engine, menu) {
       icon: L.divIcon({ className: 'draw-vtx', iconSize: [12, 12] }),
     }).addTo(temp));
   }
-  function cancelDraw() { pts = []; temp?.remove(); temp = null; }
+  function cancelDraw() { pts = []; ptIds = []; temp?.remove(); temp = null; }
   function finalize() {
     model.push({ type: tool === 'line' ? 'polyline' : 'polygon', color, latLngs: pts.map((p) => ({ lat: p.lat, lng: p.lng })) });
     cancelDraw(); save(); redraw();

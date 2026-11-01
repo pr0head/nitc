@@ -45,3 +45,11 @@
   .draw-sec + .draw-sec { border-top: 1px solid var(--line); padding-top: 8px; }
   .draw-panel .draw-btn, .draw-panel .draw-color { width: 36px; height: 36px; }
 }
+
+/* vertices from the favorites (draw-favorites.js) */
+.draw-btn[hidden] { display: none; }
+.dfav-hint { padding: 0 6px 6px; font-size: 12px; color: var(--muted); }
+.dfav-on { flex-direction: row; align-items: center; color: var(--accent); }
+.dfav-on .lm-name { flex: 1; }
+.dfav-n { flex: none; margin-left: 8px; font-size: 16px; line-height: 1; color: var(--accent); }
+.lm-row:disabled { cursor: default; opacity: 0.55; }
