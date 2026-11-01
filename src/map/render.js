@@ -41,7 +41,7 @@ export function makeGroups(map) {
   // z-order: fields under links under portals.
   const fields = L.layerGroup().addTo(map);
   const links = L.layerGroup().addTo(map);
-  const portals = L.layerGroup().addTo(map);
+  const portals = L.featureGroup().addTo(map); // a group: its markers' clicks reach the engine
   return { fields, links, portals };
 }
 

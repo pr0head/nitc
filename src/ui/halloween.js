@@ -104,6 +104,7 @@ export function mountHalloween(app, engine, menu) {
   let witchAt = 0;
   map.on('click', (e) => {
     if (!moving() || prefs.draw || Date.now() - witchAt < WITCH_REST_MS || onMarker(e.originalEvent)) return;
+    if (sky.querySelector('.hw-witch')) return; // a near tap opened a portal: she is already out
     const near = engine.getData().portals.some((p) =>
       Number.isFinite(p.lat) && map.latLngToContainerPoint([p.lat, p.lng]).distanceTo(e.containerPoint) < MISS_PX);
     if (!near || Math.random() >= WITCH_CHANCE) return;

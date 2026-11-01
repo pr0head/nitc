@@ -11,7 +11,7 @@ import { createHighlightLayer } from './overlay.js';
 import { styleFn } from './highlight.js';
 import { ringArea, fmtArea } from './geo.js';
 import { prefs } from '../state/prefs.js';
-import { bus } from '../state/bus.js';
+import { bus, tools } from '../state/bus.js';
 
 // Base maps. Most are EPSG:3857; the Yandex scheme is requested in
 // web_mercator to fit that grid. Yandex satellite exists ONLY in EPSG:3395
@@ -48,6 +48,11 @@ const BASE_MAPS = {
 };
 const crsOf = (id) => BASE_MAPS[id].crs || L.CRS.EPSG3857;
 
+// Touch: a fingertip is far less precise than the 14 px portal dot, so a tap
+// that just misses a portal opens the nearest one within NEAR_PX.
+const touch = matchMedia('(pointer: coarse)').matches;
+const NEAR_PX = 24;
+
 export function createMap(el, { onStatus, onPortalClick, onUnauthorized, statusEl } = {}) {
   // preferCanvas: portals/links/fields render onto a single <canvas> instead of
   // thousands of SVG nodes — the big win for smooth panning with 2000+ portals
@@ -82,6 +87,19 @@ export function createMap(el, { onStatus, onPortalClick, onUnauthorized, statusE
 
   let tiles = BASE_MAPS[prefs.baseMap].build().addTo(map);
   const groups = makeGroups(map);
+  if (touch) {
+    let hit = null; // the tap a portal marker itself took
+    groups.portals.on('click', (e) => { hit = e.originalEvent; });
+    map.on('click', (e) => {
+      if (e.originalEvent === hit || tools.drawMode) return; // drawing places free points
+      let near = null, best = NEAR_PX;
+      groups.portals.eachLayer((m) => {
+        const d = map.latLngToContainerPoint(m.getLatLng()).distanceTo(e.containerPoint);
+        if (d < best) { near = m; best = d; }
+      });
+      near?.fire('click');
+    });
+  }
   const highlight = createHighlightLayer().addTo(map); // single canvas, drawn above the portals
 
   let gen = 0;          // generation guard — only the latest load may render
