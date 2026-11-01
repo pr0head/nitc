@@ -413,6 +413,14 @@ body:has(.pd:not([hidden])) .toolbar { right: calc(10px + min(350px, 100vw - 20p
 }
 .nitc-pin-menu__in button:hover { background: var(--hover); }
 .nitc-pin-menu__in button.done { color: var(--accent); background: var(--accent-bg); }
+/* portals in action range: name and distance; a hover marks it, a click opens it */
+.nitc-pin-menu__list { border-top: 1px solid var(--line); margin-top: 4px; padding-top: 4px; max-height: min(180px, 32dvh); overflow-y: auto; }
+.nitc-pin-menu__h { padding: 4px 12px 2px; color: var(--muted); font: 600 11px var(--font); }
+.nitc-pin-menu__in .nitc-pin-menu__p {
+  display: flex; align-items: center; gap: 10px; width: 100%; max-width: 260px; min-height: 36px; font-weight: 500;
+}
+.nitc-pin-menu__p span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nitc-pin-menu__p b { color: var(--muted); font-weight: 600; font-variant-numeric: tabular-nums; }
 
 /* segmented control: tabs inside panels and cards (one shared style) */
 .seg { display: flex; gap: 2px; padding: 2px; background: var(--input); border: 1px solid var(--line); border-radius: 8px; }
