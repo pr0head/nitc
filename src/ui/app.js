@@ -35,7 +35,6 @@ import { createMenu } from './menu.js';
 import { confirmBox } from './dialog.js';
 import { esc } from './esc.js';
 import { APK_URL, inAndroidApp, androidAppVersion, releaseUrl, appUpdate, updateUrl } from './android.js';
-import { version } from '../../package.json';
 
 const LOGOUT_ICON =
   '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>';
@@ -98,9 +97,9 @@ export function showApp(root) {
       leave();
     },
   });
-  // the map comes from the site, so its version is the site's; the app shell
-  // has its own (it is rebuilt only when it changes). Links to the release notes.
-  menu.note(`NITC ${version}` + (androidAppVersion ? ` · приложение ${androidAppVersion}` : ''), releaseUrl(version));
+  // The site in a browser is always the latest, so only the app shows a
+  // version: its own, updated by hand. Links to that release's notes.
+  if (inAndroidApp) menu.note(`NITC · приложение ${androidAppVersion}`, releaseUrl(androidAppVersion));
 
   engine.load(); // initial viewport
   // Start view: a deep link; else the last viewed position (restored by the

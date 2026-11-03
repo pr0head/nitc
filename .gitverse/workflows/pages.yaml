@@ -20,15 +20,19 @@ jobs:
           node-version: 22
       - run: npm ci
       # same /nitc/ base as GitHub Pages: the project site lives at /nitc/ too;
-      # the latest release's APK version (nitc-X.apk) lets the map tell an
-      # out-of-date app, left empty if the release can't be read. GitHub's API
-      # gave nothing from here, so it comes from the release page's assets.
+      # the latest release's APK version lets the map tell an out-of-date app,
+      # left empty if the release can't be read. GitHub's API gave nothing from
+      # here, so it comes from the latest release's address: its tag android-vX,
+      # or (before 1.0.0) the file nitc-X.apk among the release page's assets.
       - name: Build
         run: |
           tag=$(curl -fsSI https://github.com/pr0head/nitc/releases/latest \
             | grep -i '^location:' | sed 's|.*/tag/||' | tr -d '\r')
-          export VITE_APK_VERSION=$(curl -fsSL "https://github.com/pr0head/nitc/releases/expanded_assets/$tag" \
-            | grep -o 'nitc-[0-9.]*[0-9]\.apk' | head -1 | sed 's/^nitc-//; s/\.apk$//')
+          case "$tag" in
+            android-v*) export VITE_APK_VERSION="${tag#android-v}" ;;
+            *) export VITE_APK_VERSION=$(curl -fsSL "https://github.com/pr0head/nitc/releases/expanded_assets/$tag" \
+                 | grep -o 'nitc-[0-9.]*[0-9]\.apk' | head -1 | sed 's/^nitc-//; s/\.apk$//') ;;
+          esac
           echo "latest APK: ${VITE_APK_VERSION:-unknown}"
           npm run build
       # the latest APK from GitHub releases rides along, so users in Russia

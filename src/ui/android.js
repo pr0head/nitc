@@ -3,8 +3,9 @@ const RELEASES = 'https://github.com/pr0head/nitc/releases';
 // the latest APK ships with the site, so it downloads from whichever mirror
 // the map came from (GitHub may be unreachable where the map is not)
 export const APK_URL = `${import.meta.env.BASE_URL}nitc.apk`;
-// one release's notes (and its APK)
-export const releaseUrl = (v) => `${RELEASES}/tag/v${v}`;
+// One APK release's notes. Releases carry the app only, tagged android-vX;
+// the shells before 1.0.0 came with site releases tagged vX.
+export const releaseUrl = (v) => `${RELEASES}/tag/${/^0\./.test(v) ? 'v' : 'android-v'}${v}`;
 // the Android shell appends this to its user agent
 const shell = navigator.userAgent.match(/NITC-Android\/(\S+)/);
 export const inAndroidApp = !!shell;
@@ -13,7 +14,7 @@ export const androidAppVersion = shell ? shell[1] : '';
 // a browser on an Android phone: the app would serve it better
 export const androidBrowser = !inAndroidApp && /Android/i.test(navigator.userAgent);
 
-// The newest shell, as the release had it when the site was built (CI sets
+// The newest shell, from the latest release when the site was built (CI sets
 // VITE_APK_VERSION); empty in dev or if CI could not tell.
 const latestApk = import.meta.env.VITE_APK_VERSION || '';
 const parts = (v) => (/^\d+(\.\d+)*$/.test(v) ? v.split('.').map(Number) : null);

@@ -60,7 +60,7 @@ Vite + vanilla JS (no heavy framework), map engine **Leaflet**. `npm run dev`
 (proxy at `/api` dodges CORS server-side), `npm run build` → static `dist/` for
 GitHub Pages (base `/nitc/`) via `.github/workflows/deploy.yml`. `android/` is a
 dependency-free WebView shell around the published site (APK built by
-`.github/workflows/android.yml` on `v*` tags). CORS/prod-origin and Android details
+`.github/workflows/android.yml` on `android-v*` tags; Releases carry the APK only). CORS/prod-origin and Android details
 in `docs/architecture.md`.
 
 ## Architecture
