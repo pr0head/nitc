@@ -22,6 +22,8 @@
 // Shapes are drawn along great circles, like the links they plan (the stored
 // vertices are unchanged).
 //
+// The ruler labels every edge of the plan with its length (draw-lengths.js).
+//
 // Where the plan crosses links already on the map, a red cross marks the spot;
 // a badge atop the panel counts what stands in the plan's way and opens a
 // panel with the fewest portals to take it down (draw-crosses.js).
@@ -40,6 +42,7 @@ import { backOpen, backClosed } from '../ui/back.js';
 import { STAR } from '../ui/icons.js';
 import { createFavPicker } from './draw-favorites.js';
 import { createCrossCheck } from './draw-crosses.js';
+import { createLengths } from './draw-lengths.js';
 
 // a vertex handle's grab area around its dot: a finger needs far more room
 // than a mouse
@@ -57,6 +60,8 @@ const I = {
   edit: svg(16, '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>'),
   // horseshoe magnet: outer + inner arc over the top, legs down, pole bands
   snap: svg(16, '<path d="M4 12v6h4v-6a4 4 0 0 1 8 0v6h4v-6a8 8 0 0 0-16 0z"/><path d="M4 16h4M16 16h4"/>'),
+  // a ruler laid aslant, its ticks along the top edge
+  ruler: svg(16, '<path d="M3 15.5L15.5 3 21 8.5 8.5 21z"/><path d="M7.5 11l2 2M10.5 8l2 2M13.5 5l2 2"/>'),
   del: svg(16, '<circle cx="12" cy="12" r="9"/><line x1="8" y1="8" x2="16" y2="16"/><line x1="16" y1="8" x2="8" y2="16"/>'),
   copy: svg(16, '<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>'),
   imp: svg(16, '<path d="M12 16V4M6 10l6-6 6 6"/><path d="M4 20h16"/>'),
@@ -131,6 +136,10 @@ export function mountDrawTools(container, engine, menu) {
   toolBtn(secEdit, 'snap', I.snap, 'Привязать вершины к ближайшим порталам', snapAll);
   toolBtn(secEdit, 'edit', I.edit, 'Правка: перетаскивание вершин', () => toggleTool('edit'));
   toolBtn(secEdit, 'delete', I.del, 'Удаление: нажмите на фигуру', () => toggleTool('delete'));
+  // the ruler is a view switch, not a tool: it stays lit whatever the tool
+  const lengths = createLengths({ map, pane: PANE, defColor: DEF_COLOR });
+  toolBtn(secEdit, null, I.ruler, 'Длины линков', () => rulerBtn.classList.toggle('on', lengths.toggle()));
+  const rulerBtn = secEdit.lastChild; rulerBtn.classList.toggle('on', lengths.on);
 
   const secTools = section();
   toolBtn(secTools, null, I.imp, 'Импорт IITC JSON — новым планом', importJson);
@@ -148,13 +157,13 @@ export function mountDrawTools(container, engine, menu) {
     active = true; panel.hidden = false; prefs.set({ draw: true });
     backOpen(deactivate); // Back leaves the drawing mode
     model = plans.openLast(); // the plan last worked on, if any
-    layer.addTo(map); crosses.show(); redraw();
+    layer.addTo(map); crosses.show(); lengths.show(); redraw();
   }
   function deactivate() {
     active = false; panel.hidden = true; prefs.set({ draw: false });
     backClosed(deactivate);
     cancelDraw(); setTool(null);
-    map.removeLayer(layer); map.removeLayer(editLayer); crosses.hide();
+    map.removeLayer(layer); map.removeLayer(editLayer); crosses.hide(); lengths.hide();
     tools.drawMode = false;
     tools.release('draw');
   }
@@ -281,14 +290,14 @@ export function mountDrawTools(container, engine, menu) {
         const marker = L.marker(el.getBounds().getCenter(), {
           interactive: false, keyboard: false, pane: PANE,
           icon: L.divIcon({
-            className: 'draw-farea', iconSize: null,
+            className: 'map-lbl', iconSize: null,
             html: `<span style="color:${esc(s.color || DEF_COLOR)}">${fmtArea(ringArea(lls))}</span>`,
           }),
         }).addTo(layer);
         areaLabels.push({ marker, lls });
       }
     });
-    sizeLabels();
+    sizeLabels(); lengths.update(model);
     if (active && (tool === 'edit' || tool === 'clone')) renderHandles();
     crosses.update(model);
   }

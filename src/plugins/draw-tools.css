@@ -29,14 +29,6 @@
 .draw-handle.draw-clone { cursor: copy; }
 .draw-handle.draw-clone::after { border-color: var(--accent); }
 .draw-vtx { background: #fff; border: 2px solid #000; border-radius: 50%; pointer-events: none; }
-/* an area label: a zero-size anchor at the centre, the text centred on it
-   (font-size set from the shape's on-screen size in draw-tools.js); a crisp
-   dark outline under the fill, like the field overlay's labels */
-.draw-farea { width: 0; height: 0; font: 700 11px var(--font); pointer-events: none; }
-.draw-farea span {
-  position: absolute; transform: translate(-50%, -50%); white-space: nowrap;
-  -webkit-text-stroke: 3.5px rgba(0, 0, 0, 0.85); paint-order: stroke fill;
-}
 
 @media (pointer: coarse) {
   .draw-btn, .draw-color { width: 40px; height: 40px; }

@@ -430,3 +430,12 @@ body:has(.pd:not([hidden])) .toolbar { right: calc(10px + min(350px, 100vw - 20p
 .seg button:hover { color: var(--text); }
 .seg button.on { background: var(--accent-bg); color: var(--accent); }
 @media (pointer: coarse) { .seg button { padding: 9px 8px; } }
+
+/* a text label on the map (field area, link length, link range): a
+   zero-size marker, the text centred on it (a span may turn it), over a crisp
+   dark outline like the field overlay's canvas labels */
+.map-lbl { width: 0; height: 0; font: 700 11px var(--font); pointer-events: none; }
+.map-lbl span {
+  position: absolute; transform: translate(-50%, -50%); white-space: nowrap;
+  -webkit-text-stroke: 3.5px rgba(0, 0, 0, 0.85); paint-order: stroke fill;
+}

@@ -141,3 +141,23 @@ export function fmtArea(m2) {
   if (km2 >= 0.01) return km2.toFixed(2) + ' km²';
   return Math.round(m2) + ' m²'; // "0.00 km²" would say nothing
 }
+
+// ---- lengths ----------------------------------------------------------------
+// Great-circle length of a link a→b in metres, and the middle of its arc
+// (where a label on the drawn curve belongs). a, b: [lat,lng].
+export const distanceM = (a, b) => angle(a, b) * R;
+
+export function midpoint(a, b) {
+  const A = vec(a[0], a[1]), B = vec(b[0], b[1]);
+  const x = A[0] + B[0], y = A[1] + B[1], z = A[2] + B[2];
+  const lng = deg(Math.atan2(y, x));
+  // longitude kept next to a's, as geodesicPath keeps the curve continuous
+  return [deg(Math.atan2(z, Math.hypot(x, y))), lng + 360 * Math.round((a[1] - lng) / 360)];
+}
+
+export function fmtLength(m) {
+  if (m >= 100e3) return Math.round(m / 1e3) + ' km';
+  if (m >= 10e3) return (m / 1e3).toFixed(1) + ' km';
+  if (m >= 1e3) return (m / 1e3).toFixed(2) + ' km';
+  return Math.round(m) + ' m';
+}
