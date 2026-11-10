@@ -1,12 +1,22 @@
 // Draw tools: a drawing layer over the map (line / triangle), with colour,
-// clone, edit (drag vertices), snap to portals, delete, clear and IITC
+// clone, edit (drag vertices), delete, clear and IITC
 // DrawTools JSON import/export. Switched on and off from the plate menu (the
 // state is remembered): on shows the tool panel, docked left as in IITC, and
 // the drawings; off hides both (drawings kept).
 //
+// Every vertex stands on a portal (draw-snap.js): a tap anywhere puts it on
+// the nearest portal shown on screen that the shape doesn't use yet, and a
+// dragged vertex lands on the nearest one too. Zoomed out, where the map
+// lacks the unlinked portals, a vertex put away from any dot stays free
+// (a hollow ring) and takes a portal once zoomed in. A tap on a placed vertex takes
+// it back. With a mouse, the portal the next vertex would take is ringed and
+// the shape-to-be is traced to it; a hint strip by the panel says what the
+// tool expects next and why a tap did nothing.
+//
 // Clone copies a shape past one of its vertices: click a vertex and the other
-// vertices stay put — how nested fields over a shared base get drawn. It then
-// switches to edit, since the copy's new vertex is a placeholder to drag.
+// vertices stay put — how nested fields over a shared base get drawn. The
+// copy's new vertex takes the nearest free portal past that vertex whose new
+// edges cross nothing of the plan.
 //
 // Clicking the active tool's icon again switches it off and discards whatever
 // was half-drawn. Free-form polygons can't be drawn, but imported ones render
@@ -43,6 +53,7 @@ import { STAR } from '../ui/icons.js';
 import { createFavPicker } from './draw-favorites.js';
 import { createCrossCheck } from './draw-crosses.js';
 import { createLengths } from './draw-lengths.js';
+import { createSnap, keyOf, LOOSE } from './draw-snap.js';
 
 // a vertex handle's grab area around its dot: a finger needs far more room
 // than a mouse
@@ -58,8 +69,6 @@ const I = {
   tri: svg(16, '<polygon points="12,4 20,20 4,20"/>'),
   clone: svg(16, '<polygon points="9,2 16,14 2,14"/><polygon points="15,10 22,22 8,22"/>'),
   edit: svg(16, '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>'),
-  // horseshoe magnet: outer + inner arc over the top, legs down, pole bands
-  snap: svg(16, '<path d="M4 12v6h4v-6a4 4 0 0 1 8 0v6h4v-6a8 8 0 0 0-16 0z"/><path d="M4 16h4M16 16h4"/>'),
   // a ruler laid aslant, its ticks along the top edge
   ruler: svg(16, '<path d="M3 15.5L15.5 3 21 8.5 8.5 21z"/><path d="M7.5 11l2 2M10.5 8l2 2M13.5 5l2 2"/>'),
   del: svg(16, '<circle cx="12" cy="12" r="9"/><line x1="8" y1="8" x2="16" y2="16"/><line x1="16" y1="8" x2="8" y2="16"/>'),
@@ -91,6 +100,7 @@ export function mountDrawTools(container, engine, menu) {
   const editLayer = L.layerGroup();  // vertex handles (edit/clone)
   let shapeLayers = [];              // index → Leaflet layer
   let model = [];                    // filled from the active plan
+  const loose = new Set();           // free vertices (keys) put this session, waiting for the portals
 
   const save = () => bus.emit('drawChanged', model);
   // a plan switch (or a cleared plan) replaces the model wholesale;
@@ -105,6 +115,39 @@ export function mountDrawTools(container, engine, menu) {
   const panel = document.createElement('div'); panel.className = 'draw-panel'; panel.hidden = true;
   container.append(panel);
   L.DomEvent.disableClickPropagation(panel);
+
+  // the hint strip, right of the panel's top: the tool's next step, or for a
+  // moment why the last tap did nothing
+  const hintEl = document.createElement('div'); hintEl.className = 'draw-hint'; hintEl.hidden = true;
+  container.append(hintEl);
+  let flashT = 0;
+  const HINTS = {
+    clone: ['Клон', 'Нажмите вершину — копия фигуры встанет на ближайший свободный портал за ней'],
+    edit: ['Правка', 'Перетащите вершину — она встанет на ближайший портал'],
+    delete: ['Удаление', 'Нажмите на фигуру, чтобы удалить её'],
+  };
+  function hint() {
+    clearTimeout(flashT); hintEl.classList.remove('err');
+    let title, text;
+    if (DRAW.includes(tool)) {
+      const need = tool === 'line' ? 2 : 3;
+      title = `${tool === 'line' ? 'Линия' : 'Треугольник'} · вершина ${pts.length + 1} из ${need}`;
+      text = 'Нажмите на карту — точка встанет на ближайший портал' +
+        (pts.length ? '. Повторное нажатие на вершину убирает её' : '');
+    } else if (HINTS[tool]) [title, text] = HINTS[tool];
+    hintEl.hidden = !active || !title;
+    if (hintEl.hidden) return;
+    hintEl.innerHTML = `<b>${esc(title)}</b><span>${esc(text)}</span>`;
+    placeHint();
+  }
+  function flash(msg, err = true) {
+    hint();
+    hintEl.hidden = false; hintEl.classList.toggle('err', err);
+    hintEl.innerHTML = `<span>${esc(msg)}</span>`;
+    placeHint();
+    flashT = setTimeout(hint, 3500);
+  }
+  const placeHint = () => { hintEl.style.left = panel.offsetLeft + panel.offsetWidth + 8 + 'px'; };
 
   const toolBtns = {};
   function section() { const s = document.createElement('div'); s.className = 'draw-sec'; panel.append(s); return s; }
@@ -126,20 +169,19 @@ export function mountDrawTools(container, engine, menu) {
   toolBtn(secDraw, 'triangle', I.tri, 'Треугольник (3 точки) — повторный клик отменяет', () => toggleTool('triangle'));
   toolBtn(secDraw, null, STAR(16), 'Вершины из избранного', () => picker.open());
   const favBtn = secDraw.lastChild; favBtn.hidden = true; // only with line/triangle on
-  toolBtn(secDraw, 'clone', I.clone, 'Клон: нажмите вершину, чтобы скопировать фигуру за неё, затем перетащите', () => toggleTool('clone'));
+  toolBtn(secDraw, 'clone', I.clone, 'Клон: нажмите вершину — копия встанет на ближайший свободный портал за ней', () => toggleTool('clone'));
   const colorInp = document.createElement('input');
   colorInp.type = 'color'; colorInp.className = 'draw-color'; colorInp.value = color; colorInp.title = 'Цвет';
   colorInp.addEventListener('input', () => { color = colorInp.value; });
   secDraw.append(colorInp);
 
   const secEdit = section();
-  toolBtn(secEdit, 'snap', I.snap, 'Привязать вершины к ближайшим порталам', snapAll);
-  toolBtn(secEdit, 'edit', I.edit, 'Правка: перетаскивание вершин', () => toggleTool('edit'));
-  toolBtn(secEdit, 'delete', I.del, 'Удаление: нажмите на фигуру', () => toggleTool('delete'));
   // the ruler is a view switch, not a tool: it stays lit whatever the tool
   const lengths = createLengths({ map, pane: PANE, defColor: DEF_COLOR });
   toolBtn(secEdit, null, I.ruler, 'Длины линков', () => rulerBtn.classList.toggle('on', lengths.toggle()));
   const rulerBtn = secEdit.lastChild; rulerBtn.classList.toggle('on', lengths.on);
+  toolBtn(secEdit, 'edit', I.edit, 'Правка: перетаскивание вершин', () => toggleTool('edit'));
+  toolBtn(secEdit, 'delete', I.del, 'Удаление: нажмите на фигуру', () => toggleTool('delete'));
 
   const secTools = section();
   toolBtn(secTools, null, I.imp, 'Импорт IITC JSON — новым планом', importJson);
@@ -176,6 +218,7 @@ export function mountDrawTools(container, engine, menu) {
     Object.values(toolBtns).forEach((b) => b.classList.remove('on'));
     if (t && toolBtns[t]) toolBtns[t].classList.add('on');
     favBtn.hidden = !DRAW.includes(t);
+    clearPreview(); hint();
     map.getContainer().style.cursor = DRAW.includes(t) || t === 'delete' ? 'crosshair' : '';
     if (t === 'edit' || t === 'clone') { editLayer.addTo(map); renderHandles(); }
     else { editLayer.clearLayers(); map.removeLayer(editLayer); }
@@ -186,33 +229,100 @@ export function mountDrawTools(container, engine, menu) {
   }
 
   // ---- drawing ----
-  // One click on a portal reports twice — as portalClick (snapped to the
-  // portal's exact centre) and as the map's own click a few pixels away — which
-  // would push two vertices for one click. Either copy can arrive first, so
-  // collapse anything landing on the same spot within the same gesture,
-  // keeping whichever copy is snapped to a portal.
+  // One click on a portal reports twice — as portalClick (at the portal's
+  // centre) and as the map's own click a few pixels away. Either copy can
+  // arrive first; both snap to the same portal, so the second is dropped —
+  // or it would take back the vertex the first one just put.
   const DUP_MS = 350, DUP_PX = 20;
-  let lastPt = null, lastAt = 0, lastSnapped = false;
+  let lastPt = null, lastAt = 0;
   function isDup(latlng) {
     if (!lastPt || performance.now() - lastAt > DUP_MS) return false;
     return map.latLngToLayerPoint(lastPt).distanceTo(map.latLngToLayerPoint(latlng)) < DUP_PX;
   }
-  function addPoint(latlng, snapped) {
-    if (!active || !DRAW.includes(tool)) return;
-    if (isDup(latlng)) {
-      if (!snapped || lastSnapped || !pts.length) return; // already have the better copy
-      pts.pop(); ptIds.pop(); // swap in the snapped one
-    }
-    lastPt = latlng; lastAt = performance.now(); lastSnapped = !!snapped;
-    pts.push(latlng); ptIds.push(null); updateTemp();
-    const need = tool === 'line' ? 2 : 3;
-    if (pts.length >= need) finalize();
+  const snap = createSnap({ map, engine });
+  const taken = () => new Set(pts.map(keyOf));
+  // with the portals in full, a free vertex close to one takes it
+  function settleLoose() {
+    if (!active || !loose.size) return;
+    // vertex i of vs takes a portal close by, if it is free and there is one
+    const settle = (vs, i) => {
+      const k = keyOf(vs[i]);
+      if (!loose.has(k)) return false;
+      const p = snap.settle(vs[i], new Set(vs.filter((_, j) => j !== i).map(keyOf)));
+      if (!p) return false;
+      loose.delete(k);
+      vs[i] = vs === pts ? L.latLng(p.lat, p.lng) : { lat: p.lat, lng: p.lng };
+      return true;
+    };
+    let shapes = false, half = false;
+    for (const sh of model) sh.latLngs.forEach((_, i) => { if (settle(sh.latLngs, i)) shapes = true; });
+    pts.forEach((_, i) => { if (settle(pts, i)) half = true; });
+    if (half) updateTemp();
+    if (shapes) { save(); redraw(); }
   }
-  map.on('click', (e) => addPoint(e.latlng, false));
-  // clicking a portal while drawing puts the vertex exactly on it (auto-snap)
-  bus.on('portalClick', (p) => { if (p) addPoint(L.latLng(p.lat, p.lng), true); });
+  bus.on('mapData', settleLoose);
+  // the placed vertex under a screen point (as big a target as a handle), or -1
+  function vertexAt(latlng) {
+    const c = map.latLngToContainerPoint(latlng);
+    let hit = -1, bd = handleSize() / 2;
+    pts.forEach((p, i) => { const d = map.latLngToContainerPoint(p).distanceTo(c); if (d <= bd) { bd = d; hit = i; } });
+    return hit;
+  }
+  function onTap(latlng) {
+    if (!active || !DRAW.includes(tool)) return;
+    if (isDup(latlng)) return; // the other copy of a tap already handled
+    lastPt = latlng; lastAt = performance.now();
+    const hit = vertexAt(latlng);
+    if (hit >= 0) { // a tap on a vertex takes it back
+      pts.splice(hit, 1); ptIds.splice(hit, 1);
+      if (pts.length) updateTemp(); else cancelDraw();
+      hint(); return;
+    }
+    const r = snap.place(latlng, taken(), handleSize() / 2);
+    if (r.err) { flash(r.err); return; }
+    const v = r.p ? L.latLng(r.p.lat, r.p.lng) : latlng;
+    if (r.free) loose.add(keyOf(v));
+    pts.push(v); ptIds.push(null);
+    if (pts.length >= (tool === 'line' ? 2 : 3)) finalize(); else updateTemp(true);
+    if (r.free) flash(LOOSE, false); else hint();
+  }
+  map.on('click', (e) => onTap(e.latlng));
+  bus.on('portalClick', (p) => { if (p) onTap(L.latLng(p.lat, p.lng)); });
+
+  // ---- preview (a mouse only: a finger is not over the map between taps) ----
+  // the portal the next vertex would take gets a ring, and the shape-to-be is
+  // traced to it; over a placed vertex, that vertex is ringed red instead
+  const preview = L.layerGroup();
+  let pvFrame = 0, pvAt = null;
+  function clearPreview() { preview.clearLayers(); preview.remove(); }
+  function drawPreview() {
+    pvFrame = 0;
+    preview.clearLayers();
+    if (!active || !DRAW.includes(tool) || !pvAt) { preview.remove(); return; }
+    preview.addTo(map);
+    const hit = vertexAt(pvAt);
+    if (hit >= 0) {
+      L.circleMarker(pts[hit], { radius: 11, color: '#ff2d2d', weight: 2, fill: false, interactive: false, ...OV }).addTo(preview);
+      return;
+    }
+    // zoomed out with no dot in reach the vertex would stay free: traced to
+    // the cursor itself, with a dashed ring
+    const r = snap.place(pvAt, taken(), handleSize() / 2);
+    if (r.err) return;
+    const c = r.p ? [r.p.lat, r.p.lng] : [pvAt.lat, pvAt.lng];
+    L.circleMarker(c, { radius: r.p ? 11 : 7, color, weight: 2, dashArray: r.p ? null : '3,3', fill: false, interactive: false, ...OV }).addTo(preview);
+    const ends = pts.length === 2 && tool === 'triangle' ? [pts[0], pts[1]] : pts.slice(-1);
+    for (const e of ends) {
+      L.polyline(geodesicPath([[e.lat, e.lng], c]), { color, weight: 2, opacity: 0.7, dashArray: '4,6', interactive: false, ...OV }).addTo(preview);
+    }
+  }
+  if (!touch.matches) {
+    map.on('mousemove', (e) => { pvAt = e.latlng; if (!pvFrame) pvFrame = requestAnimationFrame(drawPreview); });
+    map.on('mouseout movestart', () => { pvAt = null; preview.clearLayers(); });
+  }
+
   // Escape in the picker closes the picker only
-  document.addEventListener('keydown', (e) => { if (active && e.key === 'Escape' && !picker.isOpen) cancelDraw(); });
+  document.addEventListener('keydown', (e) => { if (active && e.key === 'Escape' && !picker.isOpen) { cancelDraw(); hint(); } });
 
   // ---- vertices from the favorites ----
   const picker = createFavPicker({
@@ -220,15 +330,16 @@ export function mountDrawTools(container, engine, menu) {
     // → true when the pick completed the shape
     onPick(f) {
       if (!active || !DRAW.includes(tool)) return true;
+      if (taken().has(keyOf(f))) return false; // the shape stands on it already
       pts.push(L.latLng(f.lat, f.lng)); ptIds.push(f.id);
       lastPt = null; // never merged with a map tap
-      if (pts.length < (tool === 'line' ? 2 : 3)) { updateTemp(); return false; }
+      if (pts.length < (tool === 'line' ? 2 : 3)) { updateTemp(true); hint(); return false; }
       const b = L.latLngBounds(pts);
-      finalize();
+      finalize(); hint();
       fit(b);
       return true;
     },
-    onUndo() { pts.pop(); ptIds.pop(); if (pts.length) updateTemp(); else cancelDraw(); },
+    onUndo() { pts.pop(); ptIds.pop(); if (pts.length) updateTemp(); else cancelDraw(); hint(); },
     // back on the map with a shape half-drawn: bring its vertices into view
     onClose() {
       if (!pts.length) return;
@@ -242,15 +353,19 @@ export function mountDrawTools(container, engine, menu) {
     paddingTopLeft: [panel.offsetLeft + panel.offsetWidth + 24, 90], paddingBottomRight: [40, 40], maxZoom: 17,
   });
 
-  function updateTemp() {
+  // added: the last vertex was just put — it pulses once, to show where it landed
+  function updateTemp(added = false) {
     temp?.remove();
     temp = L.layerGroup().addTo(map);
     if (pts.length > 1) {
       L.polyline(geodesicPath(pts.map((p) => [p.lat, p.lng])), { color, weight: 2, dashArray: '4,4', interactive: false, ...OV }).addTo(temp);
     }
-    pts.forEach((p) => L.marker(p, {
+    pts.forEach((p, i) => L.marker(p, {
       interactive: false, keyboard: false, pane: PANE,
-      icon: L.divIcon({ className: 'draw-vtx', iconSize: [12, 12] }),
+      icon: L.divIcon({
+        className: 'draw-vtx' + (added && i === pts.length - 1 ? ' draw-vtx-new' : '') + (loose.has(keyOf(p)) ? ' draw-vtx-loose' : ''),
+        iconSize: [12, 12],
+      }),
     }).addTo(temp));
   }
   function cancelDraw() { pts = []; ptIds = []; temp?.remove(); temp = null; }
@@ -280,10 +395,23 @@ export function mountDrawTools(container, engine, menu) {
       const opts = { color: s.color || DEF_COLOR, weight: 2, interactive: active && tool === 'delete', ...OV };
       const geo = geodesicPath(lls, s.type === 'polygon');
       const el = s.type === 'polygon' ? L.polygon(geo, { fillOpacity: 0.08, ...opts }) : L.polyline(geo, opts);
-      el.on('click', (ev) => {
+      const del = (ev) => {
         if (active && tool === 'delete') { L.DomEvent.stop(ev); model.splice(idx, 1); save(); redraw(); }
-      });
+      };
+      el.on('click', del);
       el.addTo(layer); shapeLayers[idx] = el;
+      for (const v of s.latLngs) {
+        if (!loose.has(keyOf(v))) continue;
+        L.marker([v.lat, v.lng], {
+          interactive: false, keyboard: false, pane: PANE,
+          icon: L.divIcon({ className: 'draw-vtx draw-vtx-loose', iconSize: [14, 14] }),
+        }).addTo(layer);
+      }
+      // a 2 px line is hard to hit, unlike a triangle's fill: while deleting,
+      // an invisible wide stroke over it takes the tap, as wide as a handle
+      if (active && tool === 'delete' && s.type === 'polyline') {
+        L.polyline(geo, { ...OV, weight: handleSize(), opacity: 0, interactive: true }).on('click', del).addTo(layer);
+      }
       // area label, toggled by the layers panel's field highlight. No size
       // threshold: drawn shapes are deliberate and few.
       if (s.type === 'polygon' && lls.length >= 3 && prefs.highlight.fieldArea) {
@@ -322,16 +450,28 @@ export function mountDrawTools(container, engine, menu) {
         shapeLayers[si]?.setLatLngs(geodesicPath(s.latLngs.map((q) => [q.lat, q.lng]), s.type === 'polygon'));
         crosses.update(model);
       });
-      // redraw, not just save: the area label is a separate marker
-      h.on('dragend', () => { save(); redraw(); });
+      // the drop lands on the nearest portal the shape doesn't use (zoomed
+      // out: on a dot within reach, or stays free); with none on screen the
+      // vertex goes back where it was
+      let from = null;
+      h.on('dragstart', () => { from = { ...s.latLngs[vi] }; });
+      h.on('dragend', (ev) => {
+        const at = ev.target.getLatLng();
+        const r = snap.place(at, new Set(s.latLngs.filter((_, i) => i !== vi).map(keyOf)), handleSize() / 2);
+        loose.delete(keyOf(from));
+        if (r.err) { s.latLngs[vi] = from; flash(r.err); }
+        else if (r.free) { s.latLngs[vi] = { lat: at.lat, lng: at.lng }; loose.add(keyOf(at)); flash(LOOSE, false); }
+        else s.latLngs[vi] = { lat: r.p.lat, lng: r.p.lng };
+        save(); redraw(); // redraw, not just save: the area label is a separate marker
+      });
       h.addTo(editLayer);
     }));
   }
 
   // ---- clone ----
   // Every vertex but the clicked one is kept; that one moves outwards, away
-  // from the middle of the others, by a fixed number of SCREEN pixels — far
-  // enough off the original, close enough to stay in view.
+  // from the middle of the others: the copy takes the free portal nearest to a
+  // point a fixed number of SCREEN pixels out that way (draw-snap.js).
   const CLONE_PX = 60;
   function cloneAt(si, vi) {
     const s = model[si];
@@ -347,33 +487,18 @@ export function mountDrawTools(container, engine, menu) {
     const len = Math.sqrt(dir.x * dir.x + dir.y * dir.y);
     // a vertex on the middle of the others gives no direction; straight up will do
     dir = len < 1 ? L.point(0, -1) : L.point(dir.x / len, dir.y / len);
-    const np = map.layerPointToLatLng(pt.add(dir.multiplyBy(CLONE_PX)));
+    const toward = map.layerPointToContainerPoint(pt.add(dir.multiplyBy(CLONE_PX)));
+    const r = snap.cloneTarget(model, s, vi, toward, handleSize() / 2);
+    if (r.err) { flash(r.err); return; }
     const latLngs = s.latLngs.map((v) => ({ lat: v.lat, lng: v.lng }));
+    const np = r.p || map.containerPointToLatLng(toward);
     latLngs[vi] = { lat: np.lat, lng: np.lng };
+    if (r.free) { loose.add(keyOf(np)); flash(LOOSE, false); }
     model.push({ type: s.type, color: s.color || color, latLngs });
-    save();
-    setTool('edit'); // dragging the placeholder vertex into place is always next
+    save(); redraw(); // clone stays on: the next nesting is one more tap
   }
 
   // ---- ops ----
-  function snapAll() {
-    const d = engine.getData();
-    const ps = [...d.portals, ...d.corners]; // corners: link/field ends when zoomed out
-    if (!ps.length) return;
-    const b = map.getBounds(); // only vertices currently on screen
-    model.forEach((s) => {
-      s.latLngs = s.latLngs.map((v) => {
-        if (!b.contains([v.lat, v.lng])) return v;
-        let best = null, bd = Infinity;
-        for (const p of ps) {
-          const d = (p.lat - v.lat) ** 2 + (p.lng - v.lng) ** 2;
-          if (d < bd) { bd = d; best = p; }
-        }
-        return best ? { lat: best.lat, lng: best.lng } : v;
-      });
-    });
-    save(); redraw();
-  }
   // a copy leaves nothing to see, so the button flashes a tick once it's done
   let copiedT = 0;
   function copied() {

@@ -29,6 +29,24 @@
 .draw-handle.draw-clone { cursor: copy; }
 .draw-handle.draw-clone::after { border-color: var(--accent); }
 .draw-vtx { background: #fff; border: 2px solid #000; border-radius: 50%; pointer-events: none; }
+/* a free vertex (zoomed out, away from any portal): a hollow ring until it
+   takes a portal on zoom-in */
+.draw-vtx.draw-vtx-loose { background: none; border: 2px dashed #fff; box-shadow: 0 0 0 1px #000; }
+/* the vertex just put pulses once: where the tap landed */
+.draw-vtx-new { animation: draw-vtx-pulse 0.6s ease-out; }
+@keyframes draw-vtx-pulse { from { box-shadow: 0 0 0 0 #fffc; } to { box-shadow: 0 0 0 14px #fff0; } }
+
+/* the hint strip right of the panel's top: the next step, or why a tap did
+   nothing (.err); it never takes a tap from the map */
+.draw-hint {
+  position: absolute; top: 62px; z-index: 990; max-width: min(340px, calc(100vw - 80px));
+  display: flex; flex-direction: column; gap: 2px; padding: 6px 10px; pointer-events: none;
+  background: var(--panel-bg); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 4px 16px #0008;
+  font-size: 12px; line-height: 1.35; color: var(--muted);
+}
+.draw-hint[hidden] { display: none; }
+.draw-hint b { color: var(--text); font-weight: 600; }
+.draw-hint.err { border-color: var(--danger); color: var(--text); }
 
 @media (pointer: coarse) {
   .draw-btn, .draw-color { width: 40px; height: 40px; }
