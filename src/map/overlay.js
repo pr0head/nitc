@@ -8,9 +8,13 @@
 // The transform/zoom-animation plumbing mirrors Leaflet's own L.Renderer so the
 // overlay pans and zoom-animates in lockstep with the vector canvas.
 import L from 'leaflet';
+import { labelPx, screenArea } from './label.js';
 
 const PAD = 0.1; // draw a little beyond the viewport so pans need fewer redraws
-const RETINA = (window.devicePixelRatio || 1) > 1 ? 2 : 1;
+// the real device pixel ratio (fractional on scaled desktops, 3 on most
+// phones), re-read on every resize: browser zoom and moving the window to
+// another monitor change it
+const dpr = () => Math.min(3, window.devicePixelRatio || 1);
 const MIN_LABEL_PX = 2500; // ~50×50 px of on-screen triangle before it gets an area label
 const FONT = '-apple-system, system-ui, "Segoe UI", Roboto, Arial, sans-serif';
 
@@ -48,7 +52,16 @@ const HighlightLayer = L.Layer.extend({
     this._update();
   },
 
-  onRemove() { L.DomUtil.remove(this._canvas); },
+  onRemove() { L.DomUtil.remove(this._canvas); this._dprWatch?.(); },
+
+  // a DPR change without a resize (another monitor) only shows up here
+  _watchDpr() {
+    this._dprWatch?.();
+    const mq = matchMedia(`(resolution: ${this._dpr}dppx)`);
+    const on = () => this._update();
+    mq.addEventListener('change', on, { once: true });
+    this._dprWatch = () => mq.removeEventListener('change', on);
+  },
 
   getEvents() {
     const e = { viewreset: this._reset, zoom: this._onZoom, moveend: this._update, zoomend: this._update };
@@ -79,7 +92,9 @@ const HighlightLayer = L.Layer.extend({
 
     const s = this._bounds.getSize(), c = this._canvas;
     L.DomUtil.setPosition(c, this._bounds.min);
-    c.width = RETINA * s.x; c.height = RETINA * s.y;
+    const r = dpr();
+    if (r !== this._dpr) { this._dpr = r; this._watchDpr(); }
+    c.width = Math.round(r * s.x); c.height = Math.round(r * s.y);
     c.style.width = s.x + 'px'; c.style.height = s.y + 'px';
     this._redraw();
   },
@@ -89,7 +104,7 @@ const HighlightLayer = L.Layer.extend({
     if (!ctx || !b) return;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, c.width, c.height);
-    ctx.scale(RETINA, RETINA);
+    ctx.scale(c.width / (b.max.x - b.min.x), c.height / (b.max.y - b.min.y));
     ctx.translate(-b.min.x, -b.min.y); // now we can draw in map layer-point coords
     this._drawMarks(ctx, b);
     this._drawLabels(ctx);
@@ -103,7 +118,7 @@ const HighlightLayer = L.Layer.extend({
       ctx.lineWidth = 2.6;
       if (m.top) { ctx.strokeStyle = m.top; ctx.beginPath(); ctx.arc(p.x, p.y, r, Math.PI, 2 * Math.PI); ctx.stroke(); }
       if (m.bot) { ctx.strokeStyle = m.bot; ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI); ctx.stroke(); }
-      if (m.text) this._label(ctx, m.text, p.x, p.y, '#fff', 700);
+      if (m.text) this._label(ctx, m.text, p.x, p.y, '#fff', 11);
     }
   },
 
@@ -111,26 +126,27 @@ const HighlightLayer = L.Layer.extend({
     for (const lb of this._labels) {
       const pts = lb.ring.map((ll) => this._map.latLngToLayerPoint(ll));
       // on-screen triangle area; skip slivers / tiny fields (they nest heavily)
-      const px = Math.abs((pts[1].x - pts[0].x) * (pts[2].y - pts[0].y) -
-        (pts[2].x - pts[0].x) * (pts[1].y - pts[0].y)) / 2;
+      const px = screenArea(pts);
       if (px < MIN_LABEL_PX) continue;
       const cx = (pts[0].x + pts[1].x + pts[2].x) / 3;
       const cy = (pts[0].y + pts[1].y + pts[2].y) / 3;
-      this._label(ctx, lb.text, cx, cy, lb.color, 600);
+      this._label(ctx, lb.text, cx, cy, lb.color, labelPx(px));
     }
   },
 
-  // text with a soft dark halo (blurred shadow stacked 3×) so it stays legible
-  // over any base map
-  _label(ctx, text, x, y, color, weight) {
+  // bold text over a crisp dark outline (a stroke under the fill, not a
+  // blurred glow) so it stays legible over any base map and its own field
+  _label(ctx, text, x, y, color, size) {
     ctx.save();
-    ctx.font = `${weight} 11px ${FONT}`;
+    ctx.font = `700 ${size}px ${FONT}`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = 3.5;
+    ctx.strokeStyle = 'rgba(0,0,0,0.85)';
+    ctx.strokeText(text, x, y);
     ctx.fillStyle = color;
-    ctx.shadowColor = '#000';
-    ctx.shadowBlur = 2 * RETINA; // shadowBlur ignores the ctx scale
-    for (let i = 0; i < 3; i++) ctx.fillText(text, x, y);
+    ctx.fillText(text, x, y);
     ctx.restore();
   },
 });

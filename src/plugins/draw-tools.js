@@ -33,6 +33,7 @@ import { bus, tools } from '../state/bus.js';
 import { prefs } from '../state/prefs.js';
 import { plans } from './plans.js';
 import { ringArea, fmtArea, geodesicPath } from '../map/geo.js';
+import { labelPx, screenArea } from '../map/label.js';
 import { confirmBox, promptBox, alertBox } from '../ui/dialog.js';
 import { esc } from '../ui/esc.js';
 import { backOpen, backClosed } from '../ui/back.js';
@@ -250,8 +251,18 @@ export function mountDrawTools(container, engine, menu) {
   }
 
   // ---- render ----
+  // area labels sized like the field overlay's, by the shape's on-screen area
+  let areaLabels = []; // [{ marker, lls }]
+  function sizeLabels() {
+    for (const { marker, lls } of areaLabels) {
+      const el = marker.getElement();
+      if (el) el.style.fontSize = labelPx(screenArea(lls.map((ll) => map.latLngToLayerPoint(ll)))) + 'px';
+    }
+  }
+  map.on('zoomend', sizeLabels);
+
   function redraw() {
-    layer.clearLayers(); shapeLayers = [];
+    layer.clearLayers(); shapeLayers = []; areaLabels = [];
     model.forEach((s, idx) => {
       const lls = s.latLngs.map((p) => [p.lat, p.lng]);
       // only the delete tool needs shapes to catch clicks — otherwise a shape
@@ -267,15 +278,17 @@ export function mountDrawTools(container, engine, menu) {
       // area label, toggled by the layers panel's field highlight. No size
       // threshold: drawn shapes are deliberate and few.
       if (s.type === 'polygon' && lls.length >= 3 && prefs.highlight.fieldArea) {
-        L.marker(el.getBounds().getCenter(), {
+        const marker = L.marker(el.getBounds().getCenter(), {
           interactive: false, keyboard: false, pane: PANE,
           icon: L.divIcon({
-            className: 'draw-farea', iconSize: [90, 14], iconAnchor: [45, 7],
+            className: 'draw-farea', iconSize: null,
             html: `<span style="color:${esc(s.color || DEF_COLOR)}">${fmtArea(ringArea(lls))}</span>`,
           }),
         }).addTo(layer);
+        areaLabels.push({ marker, lls });
       }
     });
+    sizeLabels();
     if (active && (tool === 'edit' || tool === 'clone')) renderHandles();
     crosses.update(model);
   }
