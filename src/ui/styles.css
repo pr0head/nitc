@@ -439,3 +439,6 @@ body:has(.pd:not([hidden])) .toolbar { right: calc(10px + min(350px, 100vw - 20p
   position: absolute; transform: translate(-50%, -50%); white-space: nowrap;
   -webkit-text-stroke: 3.5px rgba(0, 0, 0, 0.85); paint-order: stroke fill;
 }
+/* a label bent along a curve: an SVG at the marker, drawn past its 0×0 box */
+.map-lbl svg { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: visible; }
+.map-lbl text { stroke: rgba(0, 0, 0, 0.85); stroke-width: 3.5px; stroke-linejoin: round; paint-order: stroke fill; }

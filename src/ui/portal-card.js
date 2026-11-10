@@ -71,6 +71,7 @@ const ROSE = [7, 0, 1, 6, null, 2, 5, 4, 3];
 // beyond this many pixels the range circle is far off-screen and only costs
 // rasterising, so it isn't drawn
 const MAX_RANGE_PX = 6000;
+const RANGE_MEASURE = document.createElement('canvas').getContext('2d'); // the range label's width
 const COPY = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>';
 const CARET_DOWN = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
 
@@ -335,7 +336,7 @@ export function mountPortalCard(engine) {
   map.getPane('nitcSelection').style.zIndex = 650;
   map.getPane('nitcSelection').style.pointerEvents = 'none';
   const OV = { pane: 'nitcSelection', renderer: L.svg({ pane: 'nitcSelection' }), interactive: false };
-  let selCircle = null, rangeCircle = null, rangeSpec = null;
+  let selCircle = null, rangeCircle = null, rangeSpec = null, rangeLabel = null;
 
   function selectPortal(p) {
     clearSel();
@@ -361,15 +362,67 @@ export function mountPortalCard(engine) {
   function applyRange() {
     if (!rangeSpec || rangePx(rangeSpec) > MAX_RANGE_PX) {
       rangeCircle?.remove(); rangeCircle = null;
+      rangeLabel?.remove(); rangeLabel = null;
       return;
     }
     const ring = geodesicCircle([rangeSpec.lat, rangeSpec.lng], rangeSpec.m);
-    if (rangeCircle) { rangeCircle.setLatLngs(ring); return; }
-    rangeCircle = L.polygon(ring, {
-      fill: false, color: SEL_COL, weight: 1.5, opacity: 0.85, dashArray: '5,5', ...OV,
-    }).addTo(map);
+    if (rangeCircle) rangeCircle.setLatLngs(ring);
+    else {
+      rangeCircle = L.polygon(ring, {
+        fill: false, color: SEL_COL, weight: 1.5, opacity: 0.85, dashArray: '5,5', ...OV,
+      }).addTo(map);
+    }
+    placeRangeLabel();
+  }
+  // what the dashed circle is: a label on it, at the topmost point of it in
+  // sight (north first, then stepping round both ways), clear of the card and
+  // bent along the circle
+  function placeRangeLabel() {
+    rangeLabel?.remove(); rangeLabel = null;
+    if (!rangeCircle || !rangeSpec) return;
+    const c = [rangeSpec.lat, rangeSpec.lng], size = map.getSize();
+    const mr = map.getContainer().getBoundingClientRect();
+    const pr = panel.hidden ? null : panel.getBoundingClientRect();
+    const M = 40; // px kept from the screen edges for the label's width
+    for (let i = 0; i <= 12; i++) {
+      for (const br of i && i < 12 ? [i * 15, -i * 15] : [i * 15]) {
+        const p = map.latLngToContainerPoint(destination(c, br, rangeSpec.m));
+        if (p.x < M || p.y < 12 || p.x > size.x - M || p.y > size.y - 12) continue;
+        if (pr && mr.left + p.x > pr.left - M && mr.left + p.x < pr.right + M &&
+          mr.top + p.y > pr.top - 12 && mr.top + p.y < pr.bottom + 12) continue;
+        // the text follows the drawn circle: an arc through three points of it
+        // around p, as long as the text (on screen the circle is not quite a
+        // circle at long ranges, so its curvature is taken right there)
+        const text = `дальность линка ${fmtDist(rangeSpec.m)}`;
+        RANGE_MEASURE.font = `700 11px ${getComputedStyle(document.body).fontFamily}`;
+        const half = RANGE_MEASURE.measureText(text).width / 2 + 8;
+        const q = map.latLngToContainerPoint(destination(c, br + 1, rangeSpec.m));
+        const dBr = half / Math.max(1e-6, p.distanceTo(q)); // degrees of bearing per half the text
+        let a = map.latLngToContainerPoint(destination(c, br - dBr, rangeSpec.m)).subtract(p);
+        let b = map.latLngToContainerPoint(destination(c, br + dBr, rangeSpec.m)).subtract(p);
+        if (b.x < a.x) [a, b] = [b, a]; // read left to right: never upside down
+        // circumcircle of a, (0,0), b → its radius; clockwise on screen when
+        // the arc bulges to the left of a→b
+        const crs = a.x * b.y - a.y * b.x; // (b−a)×(0−a)
+        const r = crs ? (Math.hypot(a.x, a.y) * Math.hypot(b.x, b.y) * Math.hypot(b.x - a.x, b.y - a.y)) / (2 * Math.abs(crs)) : 0;
+        const f = (v) => v.toFixed(1);
+        const d = r && r < 1e5
+          ? `M${f(a.x)},${f(a.y)} A${f(r)},${f(r)} 0 0 ${crs < 0 ? 1 : 0} ${f(b.x)},${f(b.y)}`
+          : `M${f(a.x)},${f(a.y)} L${f(b.x)},${f(b.y)}`;
+        rangeLabel = L.marker(map.containerPointToLatLng(p), {
+          interactive: false, keyboard: false, pane: OV.pane,
+          icon: L.divIcon({
+            className: 'map-lbl', iconSize: null,
+            html: `<svg><path id="nitc-range-arc" d="${d}" fill="none"/><text fill="${SEL_COL}" dy="0.35em">` +
+              `<textPath href="#nitc-range-arc" startOffset="50%" text-anchor="middle">${text}</textPath></text></svg>`,
+          }),
+        }).addTo(map);
+        return;
+      }
+    }
   }
   map.on('zoomend', applyRange);
+  map.on('moveend', placeRangeLabel);
   // a resonator chip under the pointer (or tapped): a line from the portal to
   // where that resonator stands — the slot's bearing (0 = north, 45° steps) at
   // its distance. Built once, then only moved.
@@ -391,6 +444,7 @@ export function mountPortalCard(engine) {
     selCircle?.remove(); selCircle = null;
     rangeSpec = null;
     rangeCircle?.remove(); rangeCircle = null;
+    rangeLabel?.remove(); rangeLabel = null;
   }
 
   function close() {
