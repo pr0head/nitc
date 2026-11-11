@@ -1,6 +1,6 @@
 {
   "name": "nitc",
-  "version": "0.19.3",
+  "version": "0.20.0",
   "private": true,
   "description": "Modern read-only intel map for Netgress.",
   "type": "module",
