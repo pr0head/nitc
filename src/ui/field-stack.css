@@ -1,0 +1,18 @@
+/* field stack: the box a tap on a field opens (its frame is the pin menu's) */
+.fstk { display: flex; flex-direction: column; gap: 2px; padding: 8px 6px 6px; min-width: 190px; max-width: min(280px, calc(100vw - 48px)); }
+.fstk__t { display: flex; align-items: center; gap: 8px; padding: 0 6px; font: 600 14px var(--font); }
+.fstk__t b { font-size: 16px; }
+.fstk__dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 4px; vertical-align: 1px; flex: none; }
+.fstk__t .fstk__dot { margin-right: 0; }
+.fstk__mu, .fstk__here { padding: 0 6px 0 23px; color: var(--muted); font: 500 12px var(--font); font-variant-numeric: tabular-nums; }
+.fstk__mu span { opacity: 0.8; }
+.fstk__here { color: var(--text); }
+.fstk__h { margin-top: 4px; padding: 6px 6px 2px; border-top: 1px solid var(--line); color: var(--muted); font: 600 11px var(--font); }
+.fstk .fstk__p {
+  display: block; width: 100%; min-height: 36px; padding: 0 6px; border: 0; border-radius: 7px; background: none;
+  color: var(--text); font: 500 13px var(--font); text-align: left; line-height: 36px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.fstk button.fstk__p { cursor: pointer; }
+.fstk button.fstk__p:hover { background: var(--hover); }
+.fstk__note { margin-top: 2px; padding: 0 6px; color: var(--muted); font: 500 11px var(--font); }

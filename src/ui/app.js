@@ -15,6 +15,7 @@ import { bus } from '../state/bus.js';
 import { prefs } from '../state/prefs.js';
 import { mountLayers } from './layers.js';
 import { mountPortalCard } from './portal-card.js';
+import { mountFieldStack } from './field-stack.js';
 import { mountFavorites } from '../plugins/favorites.js';
 import { mountPlans } from '../plugins/plans.js';
 import { mountDrawTools } from '../plugins/draw-tools.js';
@@ -79,6 +80,7 @@ export function showApp(root) {
   mountFavorites(menu, engine);
   mountInventory(menu, engine);
   mountPortalCard(engine);
+  mountFieldStack(engine); // a tap on a field: its matryoshka
   mountTracker(app, engine); // before COMM: it lives on COMM's events
   mountComm(app, engine, menu);
   mountScore(app, menu, () => engine.map.getCenter());

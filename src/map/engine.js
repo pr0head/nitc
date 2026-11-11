@@ -87,19 +87,23 @@ export function createMap(el, { onStatus, onPortalClick, onUnauthorized, statusE
 
   let tiles = BASE_MAPS[prefs.baseMap].build().addTo(map);
   const groups = makeGroups(map);
-  if (touch) {
-    let hit = null; // the tap a portal marker itself took
-    groups.portals.on('click', (e) => { hit = e.originalEvent; });
-    map.on('click', (e) => {
-      if (e.originalEvent === hit || tools.drawMode) return; // drawing places free points
+  // A tap no portal takes (and no drawing tool) goes out as 'mapTap' — the
+  // field stack (ui/field-stack.js) answers it. An open draw panel with no
+  // shape tool picked leaves map taps free.
+  let hit = null; // the tap a portal marker itself took
+  groups.portals.on('click', (e) => { hit = e.originalEvent; });
+  map.on('click', (e) => {
+    if (e.originalEvent === hit || tools.drawMode) return; // drawing places free points
+    if (touch) {
       let near = null, best = NEAR_PX;
       groups.portals.eachLayer((m) => {
         const d = map.latLngToContainerPoint(m.getLatLng()).distanceTo(e.containerPoint);
         if (d < best) { near = m; best = d; }
       });
-      near?.fire('click');
-    });
-  }
+      if (near) { near.fire('click'); return; }
+    }
+    bus.emit('mapTap', { lat: e.latlng.lat, lng: e.latlng.lng });
+  });
   const highlight = createHighlightLayer().addTo(map); // single canvas, drawn above the portals
 
   let gen = 0;          // generation guard — only the latest load may render
@@ -143,9 +147,11 @@ export function createMap(el, { onStatus, onPortalClick, onUnauthorized, statusE
     const zoom = map.getZoom();
     onStatus?.({ loading: true, zoom });
     try {
-      const raw = await getMap(bboxOf(), zoom, inflight.signal);
+      const bbox = bboxOf();
+      const raw = await getMap(bbox, zoom, inflight.signal);
       if (my !== gen) return; // superseded
       const data = adaptMap(raw);
+      data.bbox = bbox; // the area it covers: the field stack checks it is whole
       lastData = data;
       paint();
       bus.emit('mapData', data); // the draw tools' crossings
