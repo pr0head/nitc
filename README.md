@@ -109,7 +109,10 @@ GitHub Pages (https://pr0head.github.io/nitc/) и GitVerse Pages
 
 - [docs/NETGRESS_MAP_API.md](docs/NETGRESS_MAP_API.md) — официальный контракт API
   (машиночитаемый — [docs/netgress-map-api.openapi.json](docs/netgress-map-api.openapi.json));
-  рейтинг агентов подробно — [docs/NETGRESS_INTEL_RATING.md](docs/NETGRESS_INTEL_RATING.md).
+  подробно: рейтинг агентов — [docs/NETGRESS_INTEL_RATING.md](docs/NETGRESS_INTEL_RATING.md),
+  медали — [docs/NETGRESS_INTEL_MEDALS.md](docs/NETGRESS_INTEL_MEDALS.md),
+  рейтинг территорий — [docs/NETGRESS_INTEL_TERRITORIES.md](docs/NETGRESS_INTEL_TERRITORIES.md),
+  расстояние до резонаторов — [docs/NETGRESS_RESONATOR_DISTANCE.md](docs/NETGRESS_RESONATOR_DISTANCE.md).
 - [docs/architecture.md](docs/architecture.md) — архитектура клиента.
 - [docs/future-ideas.md](docs/future-ideas.md) — отложенные идеи фич, в т.ч. ожидающие расширения API.
 

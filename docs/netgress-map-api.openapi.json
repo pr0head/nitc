@@ -2,17 +2,21 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Netgress Map API",
-    "version": "1.2.0",
-    "description": "Read-only Netgress API for third-party maps, reviewed 2026-10-26. Includes public agent profiles, owner-only keys and inventory summaries, and world MU balance. Allowed browser origins: https://intel.ingress.com, https://intel-x.ingress.com, https://pr0head.github.io. Bearer Intel tokens remain read-only and are required for every GET. Examples are synthetic. Version 1.2 adds /v1/intel/rating with the game client metrics: active_links and active_mu; fixed 25-entry generation-bound pages."
+    "version": "1.4.0",
+    "description": "Read-only Netgress API for third-party maps, reviewed 2026-10-26. Includes public agent profiles, owner-only keys and inventory summaries, and world MU balance. Allowed browser origins: https://intel.ingress.com, https://intel-x.ingress.com, https://pr0head.github.io. Bearer Intel tokens remain read-only and are required for every GET. Examples are synthetic. Version 1.2 adds /v1/intel/rating with the game client metrics: active_links and active_mu; fixed 25-entry generation-bound pages. Primary external Intel API base URL verified 2026-10-26: https://api.netgress.ru. Game client uses https://game.netgress.ru; legacy hosts remain compatibility aliases. Paths and response schemas are unchanged. Browser origin https://pr0head.gitverse.site allowed as of 2026-10-28."
   },
   "servers": [
     {
       "url": "https://api.netgress.ru",
-      "description": "Primary"
+      "description": "Primary external Intel API"
+    },
+    {
+      "url": "https://netgress.glubina.org",
+      "description": "Legacy compatibility alias"
     },
     {
       "url": "https://ingress.worldofton.ru",
-      "description": "Alternative"
+      "description": "Legacy compatibility alias"
     }
   ],
   "security": [
@@ -355,7 +359,8 @@
                       "level": 4,
                       "current_xm": 1250,
                       "max_xm": 2500,
-                      "owner": "ExampleAgent"
+                      "owner": "ExampleAgent",
+                      "distance_m": 25.0
                     },
                     null,
                     null,
@@ -1004,7 +1009,7 @@
                     "as_of": "2026-10-26T12:00:00Z",
                     "published_at": "2026-10-26T12:00:01Z",
                     "expires_at": "2026-10-26T12:10:02Z",
-                    "coverage_note": "По подтверждённым действиям; история до начала учёта может быть неполной"
+                    "coverage_note": "РџРѕ РїРѕРґС‚РІРµСЂР¶РґС‘РЅРЅС‹Рј РґРµР№СЃС‚РІРёСЏРј; РёСЃС‚РѕСЂРёСЏ РґРѕ РЅР°С‡Р°Р»Р° СѓС‡С‘С‚Р° РјРѕР¶РµС‚ Р±С‹С‚СЊ РЅРµРїРѕР»РЅРѕР№"
                   },
                   "entries": [
                     {
@@ -1052,6 +1057,203 @@
           },
           "503": {
             "$ref": "#/components/responses/503"
+          }
+        }
+      }
+    },
+    "/v1/intel/me/medals": {
+      "get": {
+        "operationId": "getIntelOwnMedals",
+        "summary": "Медали текущего агента",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntelMedals"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid parameters"
+          },
+          "401": {
+            "description": "Invalid Intel token"
+          },
+          "403": {
+            "description": "Legal terms required"
+          },
+          "404": {
+            "description": "Not found or disabled"
+          },
+          "429": {
+            "description": "Rate limit"
+          },
+          "503": {
+            "description": "Temporarily unavailable"
+          }
+        }
+      }
+    },
+    "/v1/intel/agents/{id}/medals": {
+      "get": {
+        "operationId": "getIntelAgentMedals",
+        "summary": "Медали агента",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntelMedals"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid parameters"
+          },
+          "401": {
+            "description": "Invalid Intel token"
+          },
+          "403": {
+            "description": "Legal terms required"
+          },
+          "404": {
+            "description": "Not found or disabled"
+          },
+          "429": {
+            "description": "Rate limit"
+          },
+          "503": {
+            "description": "Temporarily unavailable"
+          }
+        }
+      }
+    },
+    "/v1/intel/territorial-rating": {
+      "get": {
+        "operationId": "getIntelTerritorialRating",
+        "summary": "Счёт и топ-10 выбранной территории",
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "fields",
+                "links"
+              ]
+            }
+          },
+          {
+            "name": "territory",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "world"
+            },
+            "description": "Мир, код региона, код ячейки или S2-токен L4/L6"
+          },
+          {
+            "name": "cells",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            },
+            "description": "Баланс 16 ячеек, только для региона"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntelTerritorialRating"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid parameters"
+          },
+          "401": {
+            "description": "Invalid Intel token"
+          },
+          "403": {
+            "description": "Legal terms required"
+          },
+          "404": {
+            "description": "Not found or disabled"
+          },
+          "429": {
+            "description": "Rate limit"
+          },
+          "503": {
+            "description": "Temporarily unavailable"
+          }
+        }
+      }
+    },
+    "/v1/intel/medal-art/{catalog}/{file}": {
+      "get": {
+        "operationId": "getIntelMedalArtwork",
+        "summary": "PNG медали",
+        "security": [],
+        "parameters": [
+          {
+            "name": "catalog",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "file",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "PNG",
+            "content": {
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "contentMediaType": "image/png"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Artwork not found"
           }
         }
       }
@@ -1384,6 +1586,11 @@
           "owner": {
             "type": "string",
             "description": "Nickname, not a user UUID."
+          },
+          "distance_m": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Distance in metres from portal centre to this resonator stored position."
           }
         },
         "required": [
@@ -1391,7 +1598,8 @@
           "level",
           "current_xm",
           "max_xm",
-          "owner"
+          "owner",
+          "distance_m"
         ]
       },
       "ModSpec": {
@@ -2643,6 +2851,321 @@
               }
             }
           }
+        ]
+      },
+      "IntelMedalAward": {
+        "type": "object",
+        "properties": {
+          "tier": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "awarded_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "origin": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tier",
+          "awarded_at",
+          "origin"
+        ]
+      },
+      "IntelMedalProgress": {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "unit": {
+                "type": "string"
+              },
+              "availability": {
+                "type": "string"
+              },
+              "coverage": {
+                "type": "string"
+              },
+              "observed_from": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "next_threshold": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "value",
+              "unit",
+              "availability",
+              "coverage",
+              "observed_from",
+              "next_threshold"
+            ]
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "IntelMedal": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "availability": {
+            "type": "string"
+          },
+          "metric_code": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "award_origin": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "awarded_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "image_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "earned_tier": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "level_eligible": {
+            "type": "boolean"
+          },
+          "thresholds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          "artwork_keys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "artwork_urls": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "awards": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IntelMedalAward"
+            }
+          },
+          "progress": {
+            "$ref": "#/components/schemas/IntelMedalProgress"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "description",
+          "category",
+          "availability",
+          "metric_code",
+          "award_origin",
+          "awarded_at",
+          "image_url",
+          "earned_tier",
+          "level_eligible",
+          "thresholds",
+          "artwork_keys",
+          "artwork_urls",
+          "awards",
+          "progress"
+        ]
+      },
+      "IntelMedals": {
+        "type": "object",
+        "properties": {
+          "schema": {
+            "type": "integer",
+            "const": 1
+          },
+          "agent_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "catalog_version": {
+            "type": "string"
+          },
+          "generated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "medals": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IntelMedal"
+            }
+          }
+        },
+        "required": [
+          "schema",
+          "agent_id",
+          "catalog_version",
+          "generated_at",
+          "medals"
+        ]
+      },
+      "IntelTerritoryBalance": {
+        "type": "object",
+        "properties": {
+          "territory": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "blue_mu": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "green_mu": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "territory",
+          "name",
+          "blue_mu",
+          "green_mu"
+        ]
+      },
+      "IntelTerritoryStanding": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nickname": {
+            "type": "string"
+          },
+          "faction": {
+            "type": "string"
+          },
+          "value": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "rank": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "user_id",
+          "nickname",
+          "faction",
+          "value",
+          "rank"
+        ]
+      },
+      "IntelTerritorialRating": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "fields",
+              "links"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ready",
+              "partial",
+              "unavailable"
+            ]
+          },
+          "mu_status": {
+            "type": "string",
+            "enum": [
+              "ready",
+              "partial",
+              "unavailable"
+            ]
+          },
+          "as_of": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "balance": {
+            "$ref": "#/components/schemas/IntelTerritoryBalance"
+          },
+          "cells": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IntelTerritoryBalance"
+            }
+          },
+          "top": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IntelTerritoryStanding"
+            },
+            "maxItems": 10
+          },
+          "self": {
+            "$ref": "#/components/schemas/IntelTerritoryStanding"
+          }
+        },
+        "required": [
+          "kind",
+          "status",
+          "mu_status",
+          "as_of",
+          "balance",
+          "top",
+          "self"
         ]
       }
     },

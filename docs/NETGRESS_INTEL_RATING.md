@@ -1,6 +1,6 @@
 # Рейтинг агентов: GET /v1/intel/rating
 
-Контракт **1.2.0**, 26 октября 2026. Этот документ описывает только новый маршрут рейтинга для сторонних карт Netgress. Основной адрес: `https://api.netgress.ru`. Альтернативный адрес: `https://ingress.worldofton.ru`.
+Контракт **1.2.1**, 26 октября 2026. Этот документ описывает только новый маршрут рейтинга для сторонних карт Netgress. Основной адрес: `https://api.netgress.ru`. Прежние адреса `https://netgress.glubina.org` и `https://ingress.worldofton.ru` сохранены для совместимости. Для новых карт используйте `https://api.netgress.ru`.
 
 ## Запрос
 
@@ -23,7 +23,7 @@ Authorization: Bearer <intel_token>
 
 Размер страницы фиксирован: **до 25 агентов**. Параметра настройки `limit` в контракте нет. Первая страница читается без `cursor`. Это мировой рейтинг игроков; фильтра по региону, фракции или периоду здесь нет.
 
-Для запроса нужен обычный read-only Intel-токен, выданный `POST /v1/auth/intel/login`. Игровой токен не подходит. Разрешённые браузерные источники: `https://pr0head.github.io`, `https://intel.ingress.com`, `https://intel-x.ingress.com`. Используйте `credentials: 'omit'`; cookies не применяются.
+Для запроса нужен обычный read-only Intel-токен, выданный `POST /v1/auth/intel/login`. Игровой токен не подходит. Разрешённые браузерные источники: `https://pr0head.github.io`, `https://pr0head.gitverse.site`, `https://intel.ingress.com`, `https://intel-x.ingress.com`. Используйте `credentials: 'omit'`; cookies не применяются.
 
 ## Что означают вкладки
 
@@ -100,7 +100,7 @@ GET /v1/intel/agents/00000000-0000-4000-8000-000000000001
 Authorization: Bearer <intel_token>
 ```
 
-Формат профиля описан в [общем справочнике](NETGRESS_API_REFERENCE.html#профили-агентов). Никнеймы выводите текстом, а не как HTML. Агент мог быть удалён после публикации снимка: профиль может ответить `404 agent_not_found`, а `level` — стать `null`.
+Формат профиля описан в [общем справочнике](NETGRESS_MAP_API.md#профили-агентов). Никнеймы выводите текстом, а не как HTML. Агент мог быть удалён после публикации снимка: профиль может ответить `404 agent_not_found`, а `level` — стать `null`.
 
 ### Собственная строка self
 

@@ -40,7 +40,7 @@ to that original game. Practical consequences for us:
    honor `Retry-After`. See the API doc's "Кеширование и обновление" and "Бюджеты".
 
 ## API in one screen
-- Base: `https://api.netgress.ru` (old: `https://netgress.glubina.org`, still served; alt: `https://ingress.worldofton.ru`) — pick ONE per client.
+- Base: `https://api.netgress.ru` (legacy, kept for compatibility: `https://netgress.glubina.org`, `https://ingress.worldofton.ru`) — pick ONE per client.
 - Auth: `POST /v1/auth/intel/login` {email,password} → `{token:"ngi_…", scope:"intel:read"}`.
   Bearer on every call. `DELETE /v1/intel/session` to revoke.
 - `GET /v1/intel/map?bbox=W,S,E,N&zoom=0..22` → `{schema,lod,portals_omitted,truncated,portals[],links[],fields[]}`.
@@ -51,6 +51,10 @@ to that original game. Practical consequences for us:
   128/page), `/me/inventory`, `/score` (world MU), `/rating?kind=links|fields&cursor=` (world
   agent rating, 25/page, one snapshot per cursor chain; `410` → start over; details in
   `docs/NETGRESS_INTEL_RATING.md`). Profiles/rating/keys/inventory are `no-store` (no ETag).
+- Since 1.4.0: `/me/medals`, `/agents/{id}/medals` (tier dates, progress, PNG `artwork_urls`/`image_url`
+  served by the public `/medal-art/…`); `/territorial-rating?kind=fields|links&territory=world|<region>|<cell>[&cells=1]`
+  (MU balance, top-10, own place; region = S2 L4, cell = L6, Ingress-style names). Both `no-store`.
+  Details: `docs/NETGRESS_INTEL_MEDALS.md`, `docs/NETGRESS_INTEL_TERRITORIES.md`.
 - bbox order is **west,south,east,north**; `position:{latitude,longitude}` (no E6).
 - faction: `blue | green | neutral`. UUIDs are opaque keys, not coordinates.
 - Full, authoritative details: **`docs/NETGRESS_MAP_API.md`** — read it before touching API code.
