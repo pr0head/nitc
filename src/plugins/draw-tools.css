@@ -137,8 +137,35 @@
 .lp-maybe { color: #ffb86b; }
 .lp-bad { color: var(--danger); font-weight: 600; }
 .lp-anchor { margin-right: 5px; color: var(--accent); font-size: 11px; }
-.lp-arrow { background: none; border: 0; pointer-events: none; }
+.lp-arrow { display: flex; align-items: center; justify-content: center; background: none; border: 0; pointer-events: none; }
+.lp-arrow.leaflet-interactive { pointer-events: auto; cursor: pointer; }
 .lp-arrow svg { display: block; }
+/* the picked portal's links, under its row: each can be turned */
+.lm-item:has(.lp-links) { flex-wrap: wrap; }
+.lp-links { flex-basis: 100%; padding: 0 6px 8px 9px; }
+.lp-link { display: flex; align-items: center; gap: 7px; min-height: 36px; border-top: 1px solid var(--line); }
+.lp-way { width: 14px; font-weight: 700; color: var(--accent); text-align: center; }
+.lp-link .lp-way[title^="входящий"] { color: var(--muted); }
+.lp-to {
+  flex: 1; min-width: 0; min-height: 32px; padding: 0; background: none; border: 0; color: var(--text); font: inherit;
+  text-align: left; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.lp-to:hover { color: var(--accent); text-decoration: underline; }
+.lp-len { color: var(--dim); font-size: 11px; white-space: nowrap; }
+.lp-flip {
+  min-width: 36px; min-height: 32px; background: var(--input); border: 1px solid var(--line); border-radius: 6px;
+  color: var(--text); font: 600 15px var(--font); cursor: pointer;
+}
+.lp-flip:hover { border-color: var(--accent); }
+.lp-link.pin .lp-flip { border-color: #ff2d2d; }
+.lp-card, .lp-unpin {
+  display: block; width: 100%; margin-top: 6px; min-height: 34px; padding: 6px 9px; background: var(--input);
+  border: 1px solid var(--line); border-radius: 6px; color: var(--text); font: 600 12px var(--font); cursor: pointer;
+}
+.lp-unpin { width: auto; margin: 6px 9px; }
+.lp-card:hover, .lp-unpin:hover { border-color: var(--accent); }
 .lp-go { padding: 0; background: none; border: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
 .lp-go:hover { color: #fff; }
 .lp-meta .lp-alt { display: block; white-space: normal; color: var(--muted); }
+/* the card opens by itself beside a wide panel: the button is for phones */
+@media (min-width: 561px) { .lp-card { display: none; } }

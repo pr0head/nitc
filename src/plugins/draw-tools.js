@@ -43,7 +43,8 @@
 // a badge atop the panel counts what stands in the plan's way and opens a
 // panel with the fewest portals to take it down (draw-crosses.js).
 //
-// Format = IITC DrawTools JSON: [{type:'polyline'|'polygon', latLngs:[{lat,lng}], color?}]
+// Format = IITC DrawTools JSON: [{type:'polyline'|'polygon', latLngs:[{lat,lng}], color?, nitc?}]
+// (nitc: link directions pinned in the link plan, draw-linkplan.js)
 import L from 'leaflet';
 import './draw-tools.css';
 import { bus, tools } from '../state/bus.js';
@@ -57,6 +58,7 @@ import { backOpen, backClosed } from '../ui/back.js';
 import { STAR } from '../ui/icons.js';
 import { createFavPicker } from './draw-favorites.js';
 import { createCrossCheck } from './draw-crosses.js';
+import { cleanNitc } from './draw-linkplan.js';
 import { createLengths } from './draw-lengths.js';
 import { createSnap, keyOf, LOOSE } from './draw-snap.js';
 
@@ -172,7 +174,7 @@ export function mountDrawTools(container, engine, menu) {
   const secCross = section();
   toolBtn(secCross, null, '', '', () => {});
   const crossBtn = secCross.lastChild; crossBtn.classList.add('draw-xbtn');
-  const crosses = createCrossCheck({ map, engine, ov: OV, btn: crossBtn, container, anchor: panel });
+  const crosses = createCrossCheck({ map, engine, ov: OV, btn: crossBtn, container, anchor: panel, save: () => save() });
 
   const secDraw = section();
   toolBtn(secDraw, 'line', I.line, 'Линия (2 точки) — повторный клик отменяет', () => toggleTool('line'));
@@ -563,7 +565,10 @@ export function mountDrawTools(container, engine, menu) {
       if (!it || (it.type !== 'polyline' && it.type !== 'polygon') || !Array.isArray(it.latLngs)) continue;
       if (it.latLngs.length < (it.type === 'polyline' ? 2 : 3)) continue;
       if (!it.latLngs.every((c) => c && typeof c.lat === 'number' && typeof c.lng === 'number')) continue;
-      shapes.push({ type: it.type, latLngs: it.latLngs.map((c) => ({ lat: c.lat, lng: c.lng })), color: it.color || color });
+      const sh = { type: it.type, latLngs: it.latLngs.map((c) => ({ lat: c.lat, lng: c.lng })), color: it.color || color };
+      const nitc = cleanNitc(it); // link directions pinned in the link plan
+      if (nitc) sh.nitc = nitc;
+      shapes.push(sh);
     }
     if (!shapes.length) { alertBox('Не найдено ни одной корректной фигуры polyline/polygon'); return; }
     plans.adopt(shapes); // its own plan, not mixed into the one on screen

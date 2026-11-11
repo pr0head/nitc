@@ -47,7 +47,7 @@ import { greatArc, arcsCross, geodesicPath } from '../map/geo.js';
 import { backOpen, backClosed } from '../ui/back.js';
 import { narrow } from '../ui/phone.js';
 import { esc } from '../ui/esc.js';
-import { linkPlan, planHtml, planArrows } from './draw-linkplan.js';
+import { linkPlan, planHtml, planArrows, flipLink, unpinAll } from './draw-linkplan.js';
 
 const fmtLen = (m) => (m >= 1000 ? `${+(m / 1000).toFixed(1)} км` : `${m} м`);
 const xicon = (col) => `<svg width="14" height="14" viewBox="0 0 14 14"><path d="M3 3l8 8M11 3l-8 8" stroke="#fff" stroke-width="5" stroke-linecap="round"/><path d="M3 3l8 8M11 3l-8 8" stroke="${col}" stroke-width="2.5" stroke-linecap="round"/></svg>`;
@@ -163,10 +163,10 @@ function coverOf(links, cost) {
   return best.ids;
 }
 
-// { map, engine, ov: {pane, renderer}, btn, container, anchor } →
+// { map, engine, ov: {pane, renderer}, btn, container, anchor, save } →
 // { show, hide, update(model) }; btn is the badge, anchor the draw panel the
-// crossings panel docks by
-export function createCrossCheck({ map, engine, ov, btn, container, anchor }) {
+// crossings panel docks by, save() stores the model (a link turned by hand)
+export function createCrossCheck({ map, engine, ov, btn, container, anchor, save }) {
   const layer = L.layerGroup();   // crosses
   const rings = L.layerGroup();   // offered portals, while the panel is in use
   let on = false, model = [], empty = true;
@@ -277,10 +277,25 @@ export function createCrossCheck({ map, engine, ov, btn, container, anchor }) {
     if (why.length) btn.title += ' (проверено не всё)';
   }
 
+  // a portal picked in the plan tab: its row opens with its links, the card
+  // beside it where there is room (an upright phone keeps the sheet: the card
+  // is a button in the row)
+  function pickPlan(p) {
+    pfocus = p.key; paintRings(); paint();
+    bringIn([[p.lat, p.lng]]);
+    if (p.id && !narrow.matches) bus.emit('openPortal', { portal: { id: p.id, name: p.name, lat: p.lat, lng: p.lng, faction: p.faction } });
+  }
+
+  // a link turned by hand: pinned in the model, stored, counted anew
+  function flip(e) {
+    flipLink(e); save();
+    compute(); if (!ringsOn) paintRings();
+  }
+
   function paintRings() {
     rings.clearLayers();
     if (tab === 'plan') {
-      if (lp) planArrows(lp, map, rings, ov.pane);
+      if (lp) planArrows(lp, map, rings, ov.pane, flip);
       const p = pfocus && lp?.portals.find((q) => q.key === pfocus);
       if (p) L.circleMarker([p.lat, p.lng], { radius: 16, color: PLAN_RING, weight: 4, fill: false, interactive: false, className: 'dx-pulse', ...ov }).addTo(rings);
       return;
@@ -464,16 +479,29 @@ export function createCrossCheck({ map, engine, ov, btn, container, anchor }) {
   // focus, pressed again, lets go of it.
   body.addEventListener('click', (e) => {
     if (e.target.closest('.lp-go')) { setTab('cross'); return; }
+    const g = e.target.closest('.lp-to[data-go-p]');
+    if (g) {
+      const p = lp?.portals.find((q) => q.key === g.dataset.goP);
+      if (p) { pickPlan(p); body.querySelector('.lm-item.on')?.scrollIntoView({ block: 'nearest' }); }
+      return;
+    }
+    const f = e.target.closest('.lp-flip');
+    if (f) { const l = lp?.links.find((x) => x.id === f.dataset.e); if (l) flip(l); return; }
+    if (e.target.closest('.lp-unpin')) { unpinAll(model); save(); compute(); return; }
+    if (e.target.closest('.lp-card')) {
+      const p = lp?.portals.find((q) => q.key === pfocus);
+      if (!p?.id) return;
+      if (narrow.matches) close(true);
+      bus.emit('openPortal', { portal: { id: p.id, name: p.name, lat: p.lat, lng: p.lng, faction: p.faction } });
+      return;
+    }
     const r = e.target.closest('.lm-row');
     if (!r) return;
     if (r.parentElement.classList.contains('on')) { focus = null; pfocus = null; paintRings(); paint(); return; }
     if (r.dataset.p != null) {
       const p = lp?.portals.find((q) => q.key === r.dataset.p);
       if (!p) return;
-      pfocus = p.key; paintRings(); paint();
-      if (narrow.matches && p.id) close(true);
-      bringIn([[p.lat, p.lng]]);
-      if (p.id) bus.emit('openPortal', { portal: { id: p.id, name: p.name, lat: p.lat, lng: p.lng, faction: p.faction } });
+      pickPlan(p);
       return;
     }
     if (r.dataset.x != null) {

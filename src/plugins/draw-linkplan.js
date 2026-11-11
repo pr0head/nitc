@@ -4,8 +4,14 @@
 // other portals. A portal that can't reach (its level on the map is too low)
 // hands the link to the other end when that one can; a portal over the
 // outgoing limit hands links to neighbours with room left. That is one way to
-// build it, not the only one (anchors can throw links too, crews can split) —
-// a manual choice comes later.
+// build it, not the only one (anchors can throw links too, crews can split),
+// so any link can be turned by hand: a turned link is pinned, kept as it is,
+// and the automatic choice works around it.
+//
+// A pinned direction lives in the plan itself, on each shape that has that
+// side: shape.nitc.dir[i] is 1 when side i (vertex i → i+1) is thrown from
+// its first vertex, 0 from its second, null when left to the automatic
+// choice. Other tools ignore the field, so the plan stays plain DrawTools.
 //
 // Out of it: per portal the keys needed (one per incoming link), the outgoing
 // count against the limit, the longest outgoing link and what it takes — the
@@ -151,9 +157,15 @@ export function linkPlan(model, data) {
       const a = portal(v[i]), b = portal(v[(i + 1) % n]);
       if (a === b) continue;
       const id = a.key < b.key ? a.key + '|' + b.key : b.key + '|' + a.key;
-      if (edges.has(id)) continue;
-      edges.set(id, { a, b, len: distanceM([a.lat, a.lng], [b.lat, b.lng]) });
-      a.deg++; b.deg++;
+      const d = s.nitc?.dir?.[i];
+      let e = edges.get(id);
+      if (!e) {
+        e = { id, a, b, len: distanceM([a.lat, a.lng], [b.lat, b.lng]), sides: [], pin: null };
+        edges.set(id, e);
+        a.deg++; b.deg++;
+      }
+      e.sides.push({ s, i, first: a });
+      if (e.pin == null && (d === 0 || d === 1)) e.pin = d === 1 ? a : b; // the first shape that says wins
     }
     if (s.type === 'polygon' && n === 3) {
       const ks = v.map(keyOf);
@@ -164,14 +176,18 @@ export function linkPlan(model, data) {
   // directions: toward the busier end; reach and the outgoing limit correct it
   const links = [...edges.values()];
   for (const e of links) {
+    if (e.pin) {
+      e.from = e.pin; e.to = e.pin === e.a ? e.b : e.a; e.from.out++; e.to.inc++;
+      continue;
+    }
     let [from, to] = e.a.deg < e.b.deg || (e.a.deg === e.b.deg && e.a.key < e.b.key) ? [e.a, e.b] : [e.b, e.a];
     if (reach(from, e.len) === false && reach(to, e.len) !== false) [from, to] = [to, from];
     e.from = from; e.to = to; from.out++; to.inc++;
   }
   for (let guard = links.length * 2; guard > 0; guard--) {
-    const over = [...portals.values()].find((p) => p.out > GAME.outLinks && links.some((e) => e.from === p && e.to.out < GAME.outLinks && reach(e.to, e.len) !== false));
+    const over = [...portals.values()].find((p) => p.out > GAME.outLinks && links.some((e) => !e.pin && e.from === p && e.to.out < GAME.outLinks && reach(e.to, e.len) !== false));
     if (!over) break;
-    const e = links.filter((x) => x.from === over && x.to.out < GAME.outLinks && reach(x.to, x.len) !== false)
+    const e = links.filter((x) => !x.pin && x.from === over && x.to.out < GAME.outLinks && reach(x.to, x.len) !== false)
       .sort((x, y) => x.to.out - y.to.out)[0];
     e.from.out--; e.to.inc--;
     [e.from, e.to] = [e.to, e.from];
@@ -194,10 +210,38 @@ export function linkPlan(model, data) {
     fields: fields.size,
     keys: links.length,
     ap: links.length * GAME.apMake.link + fields.size * GAME.apMake.field,
+    pinned: links.filter((e) => e.pin).length,
     overLimit: list.filter((p) => p.out > GAME.outLinks).length,
     short: list.filter((p) => p.reach === false).length,
     loose: list.filter((p) => !p.onPortal).length,
   };
+}
+
+// ---- pinning ----
+// throw link e from its other end, pinned so: written on every shape with that side
+export function flipLink(e) {
+  const from = e.to;
+  for (const { s, i, first } of e.sides) {
+    const n = s.type === 'polygon' ? s.latLngs.length : s.latLngs.length - 1;
+    const dir = Array.from({ length: n }, (_, k) => s.nitc?.dir?.[k] ?? null);
+    dir[i] = first === from ? 1 : 0;
+    s.nitc = { ...s.nitc, dir };
+  }
+}
+// every link back to the automatic choice
+export function unpinAll(model) {
+  for (const s of model) {
+    if (!s.nitc) continue;
+    delete s.nitc.dir;
+    if (!Object.keys(s.nitc).length) delete s.nitc;
+  }
+}
+// an imported shape's nitc field, checked: → the field to keep, or undefined
+export function cleanNitc(it) {
+  const n = it.type === 'polygon' ? it.latLngs.length : it.latLngs.length - 1;
+  const d = it.nitc?.dir;
+  if (!Array.isArray(d) || d.length !== n || !d.every((x) => x === 0 || x === 1 || x == null)) return undefined;
+  return d.some((x) => x != null) ? { dir: d.map((x) => x ?? null) } : undefined;
 }
 
 // ---- the panel tab ----
@@ -221,18 +265,20 @@ export function planHtml(r, focusKey, unfocus, cross) {
   const anchors = r.portals.filter((p) => p.anchor), rest = r.portals.filter((p) => !p.anchor);
   if (anchors.length) {
     parts.push('<div class="dx-h">Опорные</div>');
-    anchors.forEach((p) => parts.push(row(p, focusKey, unfocus)));
+    anchors.forEach((p) => parts.push(row(p, focusKey, unfocus, r.links)));
   }
   if (rest.length) {
     parts.push(`<div class="dx-h">${anchors.length ? 'Остальные' : 'Порталы'}</div>`);
-    rest.forEach((p) => parts.push(row(p, focusKey, unfocus)));
+    rest.forEach((p) => parts.push(row(p, focusKey, unfocus, r.links)));
   }
+  if (r.pinned) parts.push(`<button type="button" class="lp-unpin">Сбросить ручные направления (${r.pinned})</button>`);
   parts.push('<div class="dx-note">Направления выбраны автоматически: линки идут к опорным порталам, ключи нужны от них, исходящие — с остальных. ' +
-    'Стрелки выходят из портала, с которого кидается линк, и указывают, куда. Уровни взяты с карты; точная дальность с модами — в карточке портала.</div>');
+    'Стрелки выходят из портала, с которого кидается линк, и указывают, куда. Нажмите на стрелку или на ⇄ в строке портала, чтобы развернуть линк: ' +
+    'развёрнутый закрепляется (стрелка в красной обводке), остальные подстраиваются. Уровни взяты с карты; точная дальность с модами — в карточке портала.</div>');
   return parts.join('');
 }
 
-function row(p, focusKey, unfocus) {
+function row(p, focusKey, unfocus, links) {
   const title = p.name || (p.onPortal ? `${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}` : 'портал не загружен');
   const meta = [];
   let alt = '';
@@ -254,15 +300,31 @@ function row(p, focusKey, unfocus) {
   const on = p.key === focusKey;
   return `<div class="lm-item${on ? ' on' : ''}"><button type="button" class="lm-row" data-p="${esc(p.key)}">` +
     `<span class="lm-name">${p.anchor ? '<b class="lp-anchor">◆</b>' : ''}${esc(title)}</span>` +
-    `<span class="lm-meta lp-meta">${meta.join(' · ')}${alt}${on ? `<span class="lp-alt">${unfocus}</span>` : ''}</span></button></div>`;
+    `<span class="lm-meta lp-meta">${meta.join(' · ')}${alt}${on ? `<span class="lp-alt">${unfocus}</span>` : ''}</span></button>` +
+    (on ? linksOf(p, links) : '') + '</div>';
+}
+
+// the picked portal's links, each with a button to turn it; a name goes to
+// that portal
+const nameOf = (p) => p.name || `${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}`;
+function linksOf(p, links) {
+  const mine = links.filter((e) => e.from === p || e.to === p)
+    .sort((x, y) => (x.from === p) - (y.from === p) || y.len - x.len);
+  return '<div class="lp-links">' + mine.map((e) => {
+    const out = e.from === p, o = out ? e.to : e.from;
+    return `<div class="lp-link${e.pin ? ' pin' : ''}"><span class="lp-way" title="${out ? 'исходящий: кидать отсюда' : 'входящий: кидают сюда, нужен ключ'}">${out ? '→' : '←'}</span>` +
+      `<button type="button" class="lp-to" data-go-p="${esc(o.key)}" title="Перейти к порталу">${esc(nameOf(o))}</button><span class="lp-len">${fmtLen(e.len)}</span>` +
+      `<button type="button" class="lp-flip" data-e="${esc(e.id)}" title="Развернуть линк">⇄</button></div>`;
+  }).join('') + (p.id ? '<button type="button" class="lp-card">Карточка портала</button>' : '') + '</div>';
 }
 
 // an arrow on every link just past the portal it is thrown from (clear of the
 // vertex handle), pointing the way it goes: standing at a portal, its own
 // links show what to throw from there; an anchor's incoming links leave it
-// bare. A link too short on screen for that gets the arrow midway.
+// bare. A link too short on screen for that gets the arrow midway. A tap
+// on an arrow turns its link (onFlip); a pinned one has a red outline.
 const HEAD_PX = 30;
-export function planArrows(r, map, into, pane) {
+export function planArrows(r, map, into, pane, onFlip) {
   for (const e of r.links) {
     const a = map.latLngToContainerPoint([e.from.lat, e.from.lng]), b = map.latLngToContainerPoint([e.to.lat, e.to.lng]);
     const d = a.distanceTo(b);
@@ -276,10 +338,12 @@ export function planArrows(r, map, into, pane) {
       ? map.containerPointToLatLng(a.add(dir.multiplyBy(HEAD_PX / len)))
       : midpoint([e.from.lat, e.from.lng], [e.to.lat, e.to.lng]);
     const deg = (Math.atan2(dir.y, dir.x) * 180) / Math.PI;
+    const stroke = e.pin ? 'stroke="#ff2d2d" stroke-width="2.5"' : 'stroke="#000" stroke-width="1.5"';
     L.marker(at, {
-      interactive: false, keyboard: false, pane,
-      icon: L.divIcon({ className: 'lp-arrow', iconSize: [16, 16],
-        html: `<svg width="16" height="16" viewBox="0 0 16 16" style="transform:rotate(${deg}deg)"><path d="M3 2l11 6-11 6z" fill="#ffe14a" stroke="#000" stroke-width="1.5" stroke-linejoin="round"/></svg>` }),
-    }).addTo(into);
+      interactive: !!onFlip, keyboard: false, pane, bubblingMouseEvents: false,
+      // a finger-sized target around the small arrow
+      icon: L.divIcon({ className: 'lp-arrow', iconSize: [32, 32],
+        html: `<svg width="16" height="16" viewBox="0 0 16 16" style="transform:rotate(${deg}deg)"><path d="M3 2l11 6-11 6z" fill="#ffe14a" ${stroke} stroke-linejoin="round"/></svg>` }),
+    }).on('click', (ev) => { L.DomEvent.stop(ev); onFlip?.(e); }).addTo(into);
   }
 }
