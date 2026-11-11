@@ -12,6 +12,8 @@
 // side: shape.nitc.dir[i] is 1 when side i (vertex i → i+1) is thrown from
 // its first vertex, 0 from its second, null when left to the automatic
 // choice. Other tools ignore the field, so the plan stays plain DrawTools.
+// The order the links are thrown in is draw-linkorder.js's; one set by hand
+// lives alongside, in shape.nitc.step.
 //
 // Out of it: per portal the keys needed (one per incoming link), the outgoing
 // count against the limit, the longest outgoing link and what it takes — the
@@ -27,6 +29,7 @@ import { GAME } from '../config.js';
 import { distanceM, geodesicPath, midpoint } from '../map/geo.js';
 import { keyOf } from './draw-snap.js';
 import { rangeMods } from '../state/mods.js';
+import { orderSteps } from './draw-linkorder.js';
 import { esc } from '../ui/esc.js';
 
 const rangeOf = (mean) => GAME.linkRangeBaseM * mean ** 4;
@@ -149,7 +152,7 @@ export function linkPlan(model, data) {
     return portals.get(k);
   };
   const edges = new Map();
-  const fields = new Set();
+  const fields = new Map(); // by its corners → {ps, edges}
   for (const s of model) {
     const v = s.latLngs, n = v.length;
     const m = s.type === 'polygon' ? n : n - 1;
@@ -160,16 +163,23 @@ export function linkPlan(model, data) {
       const d = s.nitc?.dir?.[i];
       let e = edges.get(id);
       if (!e) {
-        e = { id, a, b, len: distanceM([a.lat, a.lng], [b.lat, b.lng]), sides: [], pin: null };
+        e = { id, a, b, len: distanceM([a.lat, a.lng], [b.lat, b.lng]), sides: [], pin: null, step: null };
         edges.set(id, e);
         a.deg++; b.deg++;
       }
       e.sides.push({ s, i, first: a });
       if (e.pin == null && (d === 0 || d === 1)) e.pin = d === 1 ? a : b; // the first shape that says wins
+      const st = s.nitc?.step?.[i];
+      if (e.step == null && Number.isInteger(st) && st > 0) e.step = st;
     }
     if (s.type === 'polygon' && n === 3) {
-      const ks = v.map(keyOf);
-      if (new Set(ks).size === 3) fields.add(ks.sort().join('|'));
+      const ps = v.map(portal);
+      const ks = ps.map((p) => p.key);
+      const id = ks.slice().sort().join('|');
+      if (new Set(ks).size === 3 && !fields.has(id)) {
+        const eid = (x, y) => (x.key < y.key ? x.key + '|' + y.key : y.key + '|' + x.key);
+        fields.set(id, { ps, edges: [eid(ps[0], ps[1]), eid(ps[1], ps[2]), eid(ps[2], ps[0])] });
+      }
     }
   }
 
@@ -205,8 +215,9 @@ export function linkPlan(model, data) {
     p.need = p.longest ? need(p.longest) : null;
     p.reach = p.longest ? reach(p, p.longest) : true;
   }
-  return {
+  const r = {
     portals: list, links,
+    fieldList: [...fields.values()],
     fields: fields.size,
     keys: links.length,
     ap: links.length * GAME.apMake.link + fields.size * GAME.apMake.field,
@@ -215,6 +226,8 @@ export function linkPlan(model, data) {
     short: list.filter((p) => p.reach === false).length,
     loose: list.filter((p) => !p.onPortal).length,
   };
+  r.order = orderSteps(r);
+  return r;
 }
 
 // ---- pinning ----
@@ -228,26 +241,50 @@ export function flipLink(e) {
     s.nitc = { ...s.nitc, dir };
   }
 }
-// every link back to the automatic choice
-export function unpinAll(model) {
+// every link back to the automatic choice: of direction (dir) or order (step)
+export function unpinAll(model, field = 'dir') {
   for (const s of model) {
     if (!s.nitc) continue;
-    delete s.nitc.dir;
+    delete s.nitc[field];
     if (!Object.keys(s.nitc).length) delete s.nitc;
   }
+}
+// the order as it is now, with step i moved by d (-1 up, +1 down), pinned:
+// every link gets its step's number
+export function moveStep(r, i, d) {
+  const st = r.order.steps.slice();
+  const j = i + d;
+  if (j < 0 || j >= st.length) return;
+  [st[i], st[j]] = [st[j], st[i]];
+  st.forEach((s, k) => {
+    for (const e of s.links) {
+      for (const { s: sh, i: side } of e.sides) {
+        const n = sh.type === 'polygon' ? sh.latLngs.length : sh.latLngs.length - 1;
+        const step = Array.from({ length: n }, (_, x) => sh.nitc?.step?.[x] ?? null);
+        step[side] = k + 1;
+        sh.nitc = { ...sh.nitc, step };
+      }
+    }
+  });
 }
 // an imported shape's nitc field, checked: → the field to keep, or undefined
 export function cleanNitc(it) {
   const n = it.type === 'polygon' ? it.latLngs.length : it.latLngs.length - 1;
-  const d = it.nitc?.dir;
-  if (!Array.isArray(d) || d.length !== n || !d.every((x) => x === 0 || x === 1 || x == null)) return undefined;
-  return d.some((x) => x != null) ? { dir: d.map((x) => x ?? null) } : undefined;
+  const out = {};
+  const take = (k, ok) => {
+    const a = it.nitc?.[k];
+    if (Array.isArray(a) && a.length === n && a.every((x) => x == null || ok(x)) && a.some((x) => x != null)) out[k] = a.map((x) => x ?? null);
+  };
+  take('dir', (x) => x === 0 || x === 1);
+  take('step', (x) => Number.isInteger(x) && x > 0);
+  return Object.keys(out).length ? out : undefined;
 }
 
 // ---- the panel tab ----
 // cross: what the crossings check found ({links, self, partial}) — the plan
 // can't be built as drawn while something crosses it; a tap goes to the sky tab
-export function planHtml(r, focusKey, unfocus, cross) {
+// view: 'portals' (keys, outgoing, range per portal) or 'steps' (the order)
+export function planHtml(r, focusKey, unfocus, cross, view = 'portals') {
   const parts = [];
   parts.push(`<div class="dx-sum lp-sum"><b>${plural(r.portals.length, 'портал', 'портала', 'порталов')}</b> · ` +
     `<b>${plural(r.links.length, 'линк', 'линка', 'линков')}</b> · <b>${plural(r.fields, 'поле', 'поля', 'полей')}</b><br>` +
@@ -259,8 +296,14 @@ export function planHtml(r, focusKey, unfocus, cross) {
   if (cross?.partial && !cross.links && !cross.self) warn.push(go('Пересечения проверены не полностью (вкладка «Небо»)'));
   if (r.overLimit) warn.push(esc(`${plural(r.overLimit, 'портал', 'портала', 'порталов')} с исходящими сверх ${GAME.outLinks} — нужен SoftBank Ultra Link`));
   if (r.short) warn.push(esc(`${plural(r.short, 'портал', 'портала', 'порталов')} не добивают по уровню на карте — нужно поднять уровень или поставить Link Amp`));
+  const bad = r.order.steps.filter((x) => x.bad).length;
+  if (bad) warn.push(esc(`${plural(bad, 'шаг', 'шага', 'шагов')} в этом порядке не сделать: портал уже под полем — разверните линк или переставьте шаги`));
+  if (r.order.lost) warn.push(esc(`${plural(r.order.lost, 'поле', 'поля', 'полей')} в этом порядке не образуется: линк делает только одно поле с каждой стороны — переставьте шаги`));
   if (r.loose) warn.push(esc(`${plural(r.loose, 'вершина', 'вершины', 'вершин')} без данных о портале — приблизьте карту к ним`));
   if (warn.length) parts.push(`<ul class="dx-why">${warn.map((w) => `<li>${w}</li>`).join('')}</ul>`);
+  parts.push(`<div class="seg lp-view"><button type="button" data-view="portals" class="${view === 'steps' ? '' : 'on'}">Порталы</button>` +
+    `<button type="button" data-view="steps" class="${view === 'steps' ? 'on' : ''}">Шаги ${r.order.steps.length}</button></div>`);
+  if (view === 'steps') { parts.push(stepsHtml(r, focusKey)); return parts.join(''); }
 
   const anchors = r.portals.filter((p) => p.anchor), rest = r.portals.filter((p) => !p.anchor);
   if (anchors.length) {
@@ -275,6 +318,31 @@ export function planHtml(r, focusKey, unfocus, cross) {
   parts.push('<div class="dx-note">Направления выбраны автоматически: линки идут к опорным порталам, ключи нужны от них, исходящие — с остальных. ' +
     'Стрелки выходят из портала, с которого кидается линк, и указывают, куда. Нажмите на стрелку или на ⇄ в строке портала, чтобы развернуть линк: ' +
     'развёрнутый закрепляется (стрелка в красной обводке), остальные подстраиваются. Уровни взяты с карты; точная дальность с модами — в карточке портала.</div>');
+  return parts.join('');
+}
+
+// the order: a row per step, with ↑↓ to move it
+function stepsHtml(r, focusKey) {
+  const { steps, manual } = r.order;
+  const parts = [];
+  steps.forEach((st, i) => {
+    const p = st.portal;
+    const meta = [`→ ${esc(st.links.map((e) => nameOf(e.to)).join(', '))}`];
+    if (st.fields.length) meta.push(`+${plural(st.fields.length, 'поле', 'поля', 'полей')}`);
+    if (i) meta.push(`${fmtLen(st.dist)} от шага ${i}`);
+    let badTxt = st.bad ? `<span class="lp-alt lp-bad">под полем шага ${st.bad.by} — отсюда уже не кинуть</span>` : '';
+    if (st.lost.length) badTxt += `<span class="lp-alt lp-bad">не образуется ${plural(st.lost.length, 'поле', 'поля', 'полей')}: линк закрывает несколько с одной стороны</span>`;
+    parts.push(`<div class="lm-item lp-step${p.key === focusKey ? ' on' : ''}${st.bad || st.lost.length ? ' bad' : ''}">` +
+      `<button type="button" class="lm-row" data-p="${esc(p.key)}"><span class="lm-name"><b class="lp-n">${st.n}</b>${esc(nameOf(p))}</span>` +
+      `<span class="lm-meta lp-meta">${meta.join(' · ')}${badTxt}</span></button>` +
+      `<span class="lp-move"><button type="button" data-mv="${i}" data-d="-1" title="Раньше"${i ? '' : ' disabled'}>↑</button>` +
+      `<button type="button" data-mv="${i}" data-d="1" title="Позже"${i < steps.length - 1 ? '' : ' disabled'}>↓</button></span></div>`);
+  });
+  if (manual) parts.push('<button type="button" class="lp-unpin lp-unorder">Сбросить порядок к автоматическому</button>');
+  const idle = r.portals.filter((p) => !p.out).length;
+  parts.push('<div class="dx-note">Шаг — портал и все линки с него. Из-под поля линк не кинуть, поэтому портал идёт раньше, чем закроется поле над ним; ' +
+    'линк делает не больше одного поля с каждой стороны, поэтому вложенные поля закрываются по одному (база — первой); дальше — ближайший к предыдущему. Стрелки ↑↓ меняют порядок, он сохраняется в плане. Номера шагов видны на карте у порталов.' +
+    (idle ? ` ${plural(idle, 'портал', 'портала', 'порталов')} только принимают линки — в шагах их нет.` : '') + '</div>');
   return parts.join('');
 }
 
@@ -316,6 +384,16 @@ function linksOf(p, links) {
       `<button type="button" class="lp-to" data-go-p="${esc(o.key)}" title="Перейти к порталу">${esc(nameOf(o))}</button><span class="lp-len">${fmtLen(e.len)}</span>` +
       `<button type="button" class="lp-flip" data-e="${esc(e.id)}" title="Развернуть линк">⇄</button></div>`;
   }).join('') + (p.id ? '<button type="button" class="lp-card">Карточка портала</button>' : '') + '</div>';
+}
+
+// the step numbers by their portals
+export function planNumbers(r, map, into, pane) {
+  for (const st of r.order.steps) {
+    L.marker([st.portal.lat, st.portal.lng], {
+      interactive: false, keyboard: false, pane,
+      icon: L.divIcon({ className: 'lp-num' + (st.bad || st.lost.length ? ' bad' : ''), iconSize: [0, 0], html: `<b>${st.n}</b>` }),
+    }).addTo(into);
+  }
 }
 
 // an arrow on every link just past the portal it is thrown from (clear of the

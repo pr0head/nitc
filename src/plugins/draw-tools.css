@@ -169,3 +169,27 @@
 .lp-meta .lp-alt { display: block; white-space: normal; color: var(--muted); }
 /* the card opens by itself beside a wide panel: the button is for phones */
 @media (min-width: 561px) { .lp-card { display: none; } }
+/* the link plan's order (draw-linkorder.js) */
+.lp-view { margin: 4px 6px 6px; }
+.lp-n {
+  display: inline-block; min-width: 20px; margin-right: 6px; padding: 1px 4px; border-radius: 5px;
+  background: var(--input); color: var(--text); font-size: 11px; text-align: center;
+}
+.lp-step.bad .lp-n { background: var(--danger); color: #fff; }
+.lp-move { display: flex; gap: 2px; padding-right: 4px; }
+.lp-move button {
+  min-width: 32px; min-height: 36px; background: var(--input); border: 1px solid var(--line); border-radius: 6px;
+  color: var(--text); font: 600 14px var(--font); cursor: pointer;
+}
+.lp-move button:disabled { opacity: 0.3; cursor: default; }
+.lp-move button:not(:disabled):hover { border-color: var(--accent); }
+.lp-num { background: none; border: 0; pointer-events: none; }
+.lp-num b {
+  position: absolute; left: 7px; bottom: 5px; min-width: 16px; padding: 0 3px; border-radius: 8px;
+  background: #ffe14a; color: #000; font: 700 11px/16px var(--font); text-align: center; box-shadow: 0 0 0 1.5px #000;
+}
+.lp-num.bad b { background: #ff2d2d; color: #fff; }
+.dx-refresh { display: flex; align-items: center; gap: 10px; margin: 0 0 4px; }
+.dx-refresh .dx-reload { margin: 4px 0 4px 6px; }
+.dx-reload:disabled { opacity: 0.6; cursor: default; }
+.dx-age { color: var(--dim); font-size: 11px; }

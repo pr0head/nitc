@@ -47,7 +47,7 @@ import { greatArc, arcsCross, geodesicPath } from '../map/geo.js';
 import { backOpen, backClosed } from '../ui/back.js';
 import { narrow } from '../ui/phone.js';
 import { esc } from '../ui/esc.js';
-import { linkPlan, planHtml, planArrows, flipLink, unpinAll } from './draw-linkplan.js';
+import { linkPlan, planHtml, planArrows, planNumbers, flipLink, unpinAll, moveStep } from './draw-linkplan.js';
 
 const fmtLen = (m) => (m >= 1000 ? `${+(m / 1000).toFixed(1)} км` : `${m} м`);
 const xicon = (col) => `<svg width="14" height="14" viewBox="0 0 14 14"><path d="M3 3l8 8M11 3l-8 8" stroke="#fff" stroke-width="5" stroke-linecap="round"/><path d="M3 3l8 8M11 3l-8 8" stroke="${col}" stroke-width="2.5" stroke-linecap="round"/></svg>`;
@@ -65,6 +65,7 @@ const plural = (n, one, few, many) => {
 };
 const nLinks = (n) => plural(n, 'линк', 'линка', 'линков');
 const nPortals = (n) => plural(n, 'портал', 'портала', 'порталов');
+const fmtAge = (s) => (s < 90 ? `${s} с` : `${Math.round(s / 60)} мин`);
 
 const vkey = (v) => v.id ?? `${v.lat},${v.lng}`;
 // an edge by where its ends are, either way round: a plan edge snapped onto
@@ -179,7 +180,12 @@ export function createCrossCheck({ map, engine, ov, btn, container, anchor, save
   // the panel's tab: 'cross' (what stands in the way) or 'plan' (the link
   // plan, draw-linkplan.js); the plan tab's picked portal is its own focus
   let tab = 'cross', lp = null, pfocus = null;
-  try { if (localStorage.getItem('nitc.dx.tab') === 'plan') tab = 'plan'; } catch {}
+  let pview = 'portals'; // the plan tab's view: 'portals' or 'steps'
+  let loadedAt = 0, reloading = false; // the last map load, a reload asked for
+  try {
+    if (localStorage.getItem('nitc.dx.tab') === 'plan') tab = 'plan';
+    if (localStorage.getItem('nitc.dx.pview') === 'steps') pview = 'steps';
+  } catch {}
 
   function compute() {
     layer.clearLayers();
@@ -296,6 +302,7 @@ export function createCrossCheck({ map, engine, ov, btn, container, anchor, save
     rings.clearLayers();
     if (tab === 'plan') {
       if (lp) planArrows(lp, map, rings, ov.pane, flip);
+      if (lp && pview === 'steps') planNumbers(lp, map, rings, ov.pane);
       const p = pfocus && lp?.portals.find((q) => q.key === pfocus);
       if (p) L.circleMarker([p.lat, p.lng], { radius: 16, color: PLAN_RING, weight: 4, fill: false, interactive: false, className: 'dx-pulse', ...ov }).addTo(rings);
       return;
@@ -407,12 +414,17 @@ export function createCrossCheck({ map, engine, ov, btn, container, anchor, save
 
   function paint() {
     if (tab === 'plan') {
-      body.innerHTML = lp ? planHtml(lp, pfocus, UNFOCUS, { links: blocking.length, self: selfPts.length, partial: why.length > 0 }) : '';
+      body.innerHTML = lp ? planHtml(lp, pfocus, UNFOCUS, { links: blocking.length, self: selfPts.length, partial: why.length > 0 }, pview) : '';
       place();
       return;
     }
     const n = blocking.length;
     const parts = [];
+    // a fresh look after the ground has thrown links: the map loads now,
+    // not at its next periodic refresh
+    const age = loadedAt ? Math.round((Date.now() - loadedAt) / 1000) : null;
+    parts.push(`<div class="dx-refresh"><button type="button" class="lp-unpin dx-reload"${reloading ? ' disabled' : ''}>${reloading ? 'Обновляется…' : '↻ Обновить карту'}</button>` +
+      `<span class="dx-age">${age == null ? '' : age < 5 ? 'данные свежие' : `данные ${fmtAge(age)} назад`}</span></div>`);
     if (!n && !selfPts.length) {
       parts.push('<div class="dx-sum dx-sum-ok">План не пересекает ни загруженные линки, ни сам себя.</div>');
     }
@@ -487,7 +499,22 @@ export function createCrossCheck({ map, engine, ov, btn, container, anchor, save
     }
     const f = e.target.closest('.lp-flip');
     if (f) { const l = lp?.links.find((x) => x.id === f.dataset.e); if (l) flip(l); return; }
-    if (e.target.closest('.lp-unpin')) { unpinAll(model); save(); compute(); return; }
+    if (e.target.closest('.dx-reload')) {
+      reloading = true; paint();
+      engine.load();
+      setTimeout(() => { if (reloading) { reloading = false; if (isOpen()) paint(); } }, 15000); // no answer: let it be pressed again
+      return;
+    }
+    const v = e.target.closest('[data-view]');
+    if (v) {
+      pview = v.dataset.view;
+      try { localStorage.setItem('nitc.dx.pview', pview); } catch {}
+      paint(); paintRings(); return;
+    }
+    const mv = e.target.closest('[data-mv]');
+    if (mv) { if (lp) { moveStep(lp, +mv.dataset.mv, +mv.dataset.d); save(); compute(); } return; }
+    if (e.target.closest('.lp-unorder')) { unpinAll(model, 'step'); save(); compute(); return; }
+    if (e.target.closest('.lp-unpin')) { unpinAll(model, 'dir'); save(); compute(); return; }
     if (e.target.closest('.lp-card')) {
       const p = lp?.portals.find((q) => q.key === pfocus);
       if (!p?.id) return;
@@ -527,7 +554,9 @@ export function createCrossCheck({ map, engine, ov, btn, container, anchor, save
     if (!on || raf) return;
     raf = requestAnimationFrame(() => { raf = 0; if (on) compute(); });
   }
-  bus.on('mapData', () => { if (on) compute(); });
+  bus.on('mapData', () => { loadedAt = Date.now(); reloading = false; if (on) compute(); });
+  // the age line keeps up while the sky tab is open
+  setInterval(() => { if (isOpen() && tab === 'cross' && !reloading) paint(); }, 15000);
   bus.on('modsLearned', () => { if (on) compute(); }); // the link plan's mod ways
   // arrows show on links long enough on screen: a zoom changes which
   map.on('zoomend', () => { if (on && ringsOn && tab === 'plan') paintRings(); });
