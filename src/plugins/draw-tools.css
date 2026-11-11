@@ -271,3 +271,11 @@
 }
 .dn-btns .dn-ok { border-color: var(--accent); }
 .dn-btns button:disabled { opacity: 0.5; cursor: default; }
+.lp-n.lp-in { background: var(--input); color: var(--muted); border: 1px solid var(--line); }
+.lp-idle { flex-wrap: wrap; }
+.lp-idle .lp-throw { margin: 0 9px 8px auto; }
+.lr-turn {
+  margin-left: 6px; min-height: 30px; padding: 3px 8px; background: var(--input); border: 1px solid var(--accent);
+  border-radius: 6px; color: var(--text); font: 600 12px var(--font); cursor: pointer;
+}
+.lp-idle .lm-row { flex: 1 0 100%; }

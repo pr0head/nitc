@@ -27,7 +27,6 @@
 import L from 'leaflet';
 import { bus } from '../state/bus.js';
 import { MAP } from '../config.js';
-import { me } from '../state/me.js';
 import { plans } from './plans.js';
 import { keyOf } from './draw-snap.js';
 import { distanceM, geodesicPath } from '../map/geo.js';
@@ -35,6 +34,7 @@ import { myPosition } from '../ui/locate.js';
 import { backOpen, backClosed } from '../ui/back.js';
 import { narrow } from '../ui/phone.js';
 import { esc } from '../ui/esc.js';
+import { notReady, canTurn } from './draw-linkplan.js';
 
 const KEY = 'nitc.lp.done';
 const RING = '#ff8c1a';
@@ -62,7 +62,7 @@ export function resetDone() {
 
 // { map, engine, ov, container, onOpenSky } → { start(plan, i), stop, update(plan, blocked), active }
 // blocked: ids of plan links a map link crosses
-export function createRun({ map, engine, ov, container, onOpenSky }) {
+export function createRun({ map, engine, ov, container, onOpenSky, onFlip }) {
   const layer = L.layerGroup();
   let on = false, lp = null, idx = 0, blocked = new Set();
   let folded = false;
@@ -169,9 +169,16 @@ export function createRun({ map, engine, ov, container, onOpenSky }) {
     const warn = [];
     const crossed = st.links.filter((e) => blocked.has(e.id) && !done.has(e.id));
     if (crossed.length) warn.push(`<button type="button" class="lr-sky">${esc(crossed.length === 1 ? `Линк на ${nameOf(crossed[0].to)} пересекает линк на карте` : `${plural(crossed.length, 'линк', 'линка', 'линков')} шага пересекают линки на карте`)} — сначала убрать →</button>`);
-    const mine = me.agent?.faction;
-    const enemy = [p, ...st.links.map((e) => e.to)].filter((q, i, a) => a.indexOf(q) === i && mine && q.faction && q.faction !== mine && q.faction !== 'neu');
-    if (enemy.length) warn.push(esc(`Под противником: ${enemy.map(nameOf).join(', ')}`));
+    // the portal and the targets of links still to throw, not ready for them
+    const prep = notReady(p, true);
+    if (prep && !stepDone(st)) warn.push(esc(`${nameOf(p)}: ${prep}`));
+    for (const e of st.links.filter((x) => !done.has(x.id))) {
+      const t = notReady(e.to, false);
+      if (!t || warn.some((w) => w.startsWith(esc(nameOf(e.to)) + ':'))) continue;
+      // a base link onto a portal not ours: thrown from there, once it is taken
+      warn.push(esc(`${nameOf(e.to)}: ${t}`) + (canTurn(e)
+        ? ` <button type="button" class="lr-turn" data-e="${esc(e.id)}" title="Развернуть линк: тот портал станет шагом">Кинуть оттуда</button>` : ''));
+    }
     if (st.bad) warn.push(esc(`Портал под полем шага ${st.bad.by} — отсюда не кинуть`));
     const ahead = s.slice(idx + 1).filter((x) => x.links.some((e) => blocked.has(e.id) && !done.has(e.id))).length;
     if (ahead) warn.push(esc(`Дальше: ${plural(ahead, 'шаг', 'шага', 'шагов')} с пересечениями`));
@@ -226,6 +233,8 @@ export function createRun({ map, engine, ov, container, onOpenSky }) {
   bar.addEventListener('click', (e) => {
     const t = e.target;
     if (t.closest('.lr-x')) { stop(); return; }
+    const turn = t.closest('.lr-turn');
+    if (turn) { const l = lp?.links.find((x) => x.id === turn.dataset.e); if (l) onFlip?.(l); return; }
     // the fold button, or anywhere on a folded plate's head: fold/unfold
     if (t.closest('.lr-fold') || (folded && t.closest('.lr-head'))) {
       folded = !folded;

@@ -6,7 +6,9 @@
 // outgoing limit hands links to neighbours with room left. That is one way to
 // build it, not the only one (anchors can throw links too, crews can split),
 // so any link can be turned by hand: a turned link is pinned, kept as it is,
-// and the automatic choice works around it.
+// and the automatic choice works around it. Between ends alike (as many
+// links each, two anchors of a base), the link goes from a portal not ours to
+// one that is: the one not ours is visited anyway, to be taken.
 //
 // A pinned direction lives in the plan itself, on each shape that has that
 // side: shape.nitc.dir[i] is 1 when side i (vertex i → i+1) is thrown from
@@ -31,6 +33,7 @@ import { keyOf } from './draw-snap.js';
 import { rangeMods } from '../state/mods.js';
 import { orderSteps } from './draw-linkorder.js';
 import { esc } from '../ui/esc.js';
+import { me } from '../state/me.js';
 
 const rangeOf = (mean) => GAME.linkRangeBaseM * mean ** 4;
 const RANGE8 = rangeOf(8);
@@ -146,6 +149,7 @@ export function linkPlan(model, data) {
         key: k, lat: +v.lat, lng: +v.lng, id: p?.id, name: p?.name || '', faction: p?.faction,
         // a level counts once all 8 resonators stand: an incomplete portal can't link
         level: p?.level && p.resoCount === 8 ? p.level : 0, onPortal: !!p,
+        resos: p?.resoCount ?? null, // null: a link end seen from afar, count unknown
         deg: 0, inc: 0, out: 0, longest: 0,
       });
     }
@@ -190,7 +194,10 @@ export function linkPlan(model, data) {
       e.from = e.pin; e.to = e.pin === e.a ? e.b : e.a; e.from.out++; e.to.inc++;
       continue;
     }
-    let [from, to] = e.a.deg < e.b.deg || (e.a.deg === e.b.deg && e.a.key < e.b.key) ? [e.a, e.b] : [e.b, e.a];
+    const ours = (p) => holdOf(p) === 'mine';
+    const aFirst = e.a.deg !== e.b.deg ? e.a.deg < e.b.deg
+      : ours(e.a) !== ours(e.b) ? !ours(e.a) : e.a.key < e.b.key;
+    let [from, to] = aFirst ? [e.a, e.b] : [e.b, e.a];
     if (reach(from, e.len) === false && reach(to, e.len) !== false) [from, to] = [to, from];
     e.from = from; e.to = to; from.out++; to.inc++;
   }
@@ -334,12 +341,38 @@ function stepsHtml(r, focusKey, done) {
     parts.push('<div class="lp-run">' + `<button type="button" class="lp-unpin lp-start">▶ ${nDone ? 'Продолжить' : 'Начать'} линковку</button>` +
       (nDone ? `<button type="button" class="lp-unpin lp-reprog" title="Снять все отметки">Сбросить ${nDone}/${r.links.length}</button>` : '') + '</div>');
   }
+  // the portals that only take links: no step of their own, yet the links
+  // need them ours (keys too) — easy to miss when going by the steps
+  const idle = r.portals.filter((p) => !p.out);
+  if (idle.length && steps.length) {
+    parts.push('<div class="dx-h">Только принимают линки</div>');
+    for (const p of idle) {
+      const first = steps.findIndex((st) => st.links.some((e) => e.to === p)) + 1;
+      const need = notReady(p, false);
+      const h = holdOf(p);
+      const meta = [`ключей ${p.inc}`];
+      if (need) meta.push(`<span class="lp-bad">${esc(need)} до шага ${first}</span>`);
+      else if (h === 'mine') meta.push('<span class="lp-ok">наш</span>');
+      else meta.push('<span class="lp-maybe">чей — не известно, загрузите карту у портала</span>');
+      // the base link can be thrown from here instead: then this portal is a step
+      const turn = r.links.filter((e) => e.to === p && canTurn(e));
+      parts.push(`<div class="lm-item lp-step lp-idle${p.key === focusKey ? ' on' : ''}${need ? ' bad' : ''}">` +
+        `<button type="button" class="lm-row" data-p="${esc(p.key)}" data-step="1"><span class="lm-name"><b class="lp-n lp-in" title="Принимает линки">←</b>${esc(nameOf(p))}</span>` +
+        `<span class="lm-meta lp-meta">${meta.join(' · ')}</span></button>` +
+        turn.map((e) => `<button type="button" class="lp-unpin lp-throw" data-e="${esc(e.id)}" title="Развернуть линк: этот портал станет шагом">Кинуть отсюда → ${esc(nameOf(e.from))}</button>`).join('') +
+        '</div>');
+    }
+    parts.push('<div class="dx-h">Шаги</div>');
+  }
   steps.forEach((st, i) => {
     const p = st.portal;
     const meta = [`→ ${esc(st.links.map((e) => nameOf(e.to)).join(', '))}`];
     if (st.fields.length) meta.push(`+${plural(st.fields.length, 'поле', 'поля', 'полей')}`);
     if (i) meta.push(`${fmtLen(st.dist)} от шага ${i}`);
-    let badTxt = st.bad ? `<span class="lp-alt lp-bad">под полем шага ${st.bad.by} — отсюда уже не кинуть</span>` : '';
+    const prep = notReady(p, true);
+    // a step's own portal is visited anyway: a reminder, not an error
+    let badTxt = prep ? `<span class="lp-alt">${esc(prep)}</span>` : '';
+    badTxt += st.bad ? `<span class="lp-alt lp-bad">под полем шага ${st.bad.by} — отсюда уже не кинуть</span>` : '';
     if (st.lost.length) badTxt += `<span class="lp-alt lp-bad">здесь линк закроет сразу ${st.lost.length + 1} поля с одной стороны, а образуется только одно (большее) — поставьте этот шаг раньше</span>`;
     parts.push(`<div class="lm-item lp-step${p.key === focusKey ? ' on' : ''}${st.bad || st.lost.length ? ' bad' : ''}">` +
       `<button type="button" class="lm-row" data-p="${esc(p.key)}" data-step="1"><span class="lm-name">${stepNo(st, done)}${esc(nameOf(p))}</span>` +
@@ -348,10 +381,9 @@ function stepsHtml(r, focusKey, done) {
       `<button type="button" data-mv="${i}" data-d="1" title="Позже"${i < steps.length - 1 ? '' : ' disabled'}>↓</button></span></div>`);
   });
   if (manual) parts.push('<button type="button" class="lp-unpin lp-unorder">Сбросить порядок к автоматическому</button>');
-  const idle = r.portals.filter((p) => !p.out).length;
   parts.push('<div class="dx-note">Шаг — портал и все линки с него. Из-под поля линк не кинуть, поэтому портал идёт раньше, чем закроется поле над ним; ' +
-    'линк делает не больше одного поля с каждой стороны, поэтому вложенные поля закрываются по одному (база — первой); дальше — ближайший к предыдущему. Стрелки ↑↓ меняют порядок, он сохраняется в плане. Номера шагов видны на карте у порталов.' +
-    (idle ? ` ${plural(idle, 'портал', 'портала', 'порталов')} только принимают линки — в шагах их нет.` : '') + '</div>');
+    'линк делает не больше одного поля с каждой стороны, поэтому вложенные поля закрываются по одному (база — первой); дальше — ближайший к предыдущему. Стрелки ↑↓ меняют порядок, он сохраняется в плане. Номера шагов видны на карте у порталов. ' +
+    'Линк кидают только со своего портала со всеми 8 резонаторами и только на свой портал — чей портал, видно по последней загрузке карты.</div>');
   return parts.join('');
 }
 
@@ -384,6 +416,27 @@ function row(p, focusKey, unfocus, links) {
 // the picked portal's links, each with a button to turn it; a name goes to
 // that portal
 const nameOf = (p) => p.name || `${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}`;
+
+// whose a portal is, for the agent: 'mine' | 'neu' | 'enemy', or null (not
+// known: the portal not loaded, or the agent's faction not yet)
+export function holdOf(p) {
+  const mine = me.agent?.faction;
+  if (!mine || !p.onPortal || !p.faction) return null;
+  return p.faction === mine ? 'mine' : p.faction === 'neu' ? 'neu' : 'enemy';
+}
+// what a portal still needs before links go on: thrown from (out) it needs
+// to be ours with all 8 resonators, a target only ours → text, or ''
+export function notReady(p, out) {
+  const h = holdOf(p);
+  if (h === 'neu') return out ? 'серый — захватить и поставить 8 резонаторов' : 'серый — захватить';
+  if (h === 'enemy') return out ? 'под противником — снести, захватить, 8 резонаторов' : 'под противником — снести и захватить';
+  if (h === 'mine' && out && p.resos != null && p.resos < 8) return `поставить все 8 резонаторов (сейчас ${p.resos})`;
+  return '';
+}
+// a link between two anchors that could be thrown the other way: its target
+// has room for one more outgoing (turning a vertex's link onto an anchor
+// would only swap which one walks)
+export const canTurn = (e) => !!(e.from.anchor && e.to.anchor && e.to.out < GAME.outLinks);
 function linksOf(p, links) {
   const mine = links.filter((e) => e.from === p || e.to === p)
     .sort((x, y) => (x.from === p) - (y.from === p) || y.len - x.len);

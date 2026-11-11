@@ -185,7 +185,7 @@ export function createCrossCheck({ map, engine, ov, btn, container, anchor, save
   let loadedAt = 0, reloading = false; // the last map load, a reload asked for
   // the steps walked on the ground (draw-linkrun.js); its warning about a
   // crossing opens the sky tab
-  const run = createRun({ map, engine, ov, container, onOpenSky: () => { setTab('cross'); open(); } });
+  const run = createRun({ map, engine, ov, container, onOpenSky: () => { setTab('cross'); open(); }, onFlip: (e) => flip(e) });
   try {
     if (localStorage.getItem('nitc.dx.tab') === 'plan') tab = 'plan';
     if (localStorage.getItem('nitc.dx.pview') === 'steps') pview = 'steps';
@@ -512,7 +512,7 @@ export function createCrossCheck({ map, engine, ov, btn, container, anchor, save
       if (p) { pickPlan(p); body.querySelector('.lm-item.on')?.scrollIntoView({ block: 'nearest' }); }
       return;
     }
-    const f = e.target.closest('.lp-flip');
+    const f = e.target.closest('.lp-flip, .lp-throw');
     if (f) { const l = lp?.links.find((x) => x.id === f.dataset.e); if (l) flip(l); return; }
     if (e.target.closest('.dx-reload')) {
       reloading = true; paint();
