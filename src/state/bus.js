@@ -16,6 +16,7 @@
 //   drawLoad    shapes              plans hands draw tools a model to show
 //   mapData     data                the map loaded a viewport (adapted)
 //   toolActivated name              a map tool took over map clicks
+//   legalRequired message?          the server wants the game's terms accepted
 const handlers = new Map();
 
 export const bus = {

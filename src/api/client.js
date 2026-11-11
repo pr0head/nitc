@@ -3,6 +3,7 @@
 // that is the adapter's job. This layer only moves bytes and normalizes errors.
 import { API_BASE } from '../config.js';
 import { session } from '../state/session.js';
+import { bus } from '../state/bus.js';
 
 // Raised for every non-2xx (and network) failure, carrying a stable `code`
 // callers can branch on without parsing messages.
@@ -33,8 +34,11 @@ async function whyFailed() {
 // path-keyed ETag cache for GETs: { etag, data }. 304 → return cached data.
 const etagCache = new Map();
 
+// the error object: {error: {code, message}}, or flat {code, message}
+const errOf = (body) => (body?.error?.code ? body.error : body?.code ? body : null);
+
 function mapError(status, body) {
-  const code = body?.error?.code;
+  const code = errOf(body)?.code;
   if (code) return code;
   if (status === 401) return 'unauthorized';
   if (status === 403) return 'origin_denied';
@@ -74,7 +78,11 @@ async function request(method, path, { body, signal, auth = true, etag = false }
 
   if (!res.ok) {
     if (res.status === 401) session.clear(); // token dead — force re-login
-    throw new ApiError(mapError(res.status, data), data?.error?.message, {
+    const code = mapError(res.status, data);
+    // the account has not accepted the game's terms: nothing works until it
+    // does, in the game app — the map explains it once (app.js)
+    if (code === 'legal_required') bus.emit('legalRequired', errOf(data)?.message);
+    throw new ApiError(code, errOf(data)?.message, {
       status: res.status,
       retryAfter: Number(res.headers.get('Retry-After')) || 0,
     });

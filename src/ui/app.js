@@ -115,6 +115,7 @@ export function showApp(root) {
     else openDeepLink(engine, pin);
   });
   offerUpdate();
+  watchLegal();
   return engine;
 }
 
@@ -133,6 +134,22 @@ function offerUpdate() {
       'Скачайте её и установите поверх старой.';
     if (await confirmBox(msg, 'Скачать', 'Позже')) location.assign(updateUrl);
   }, 3000);
+}
+
+// The server refuses every request until the account accepts the game's
+// terms, and that is done in the game app, not here. Explain it once per page
+// (every failing request repeats the error); "Повторить" reloads the map.
+function watchLegal() {
+  let shown = false;
+  bus.on('legalRequired', async () => {
+    if (shown) return;
+    shown = true;
+    const msg = 'Карта не загружается: аккаунт не принял обязательные условия Netgress.\n\n' +
+      `Обновите игру Netgress до последней версии, войдите в неё аккаунтом ${session.email || 'этой карты'} ` +
+      'и примите условия использования. Потом нажмите «Повторить».\n\n' +
+      'Обновлять NITC не нужно.';
+    if (await confirmBox(msg, 'Повторить', 'Закрыть')) location.reload();
+  });
 }
 
 // The plate shows the agent — nickname in faction colour and level — once

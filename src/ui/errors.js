@@ -3,5 +3,6 @@ export function errText(code, retryAfter = 0) {
   if (code === 'rate_limited') return `лимит запросов${retryAfter ? ` · ${retryAfter}с` : ''}`;
   if (code === 'origin_denied') return 'сервер отклонил запрос';
   if (code === 'network') return 'нет сети';
+  if (code === 'legal_required') return 'примите условия Netgress';
   return `ошибка: ${code || 'request_failed'}`;
 }
