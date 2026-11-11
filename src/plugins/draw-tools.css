@@ -128,3 +128,17 @@
 @keyframes dx-pulse { 50% { stroke-opacity: 0.3; stroke-width: 7px; } }
 .draw-x--focus { z-index: 10000 !important; }
 .draw-x--focus svg { transform: scale(1.45); transform-origin: 50% 50%; }
+/* the link plan tab (draw-linkplan.js) */
+.dx-tabs { flex: 1; max-width: 240px; }
+.lp-sum b { color: var(--text); }
+.lp-meta span { white-space: nowrap; }
+.lp-keys { color: var(--accent); font-weight: 600; }
+.lp-ok { color: var(--muted); }
+.lp-maybe { color: #ffb86b; }
+.lp-bad { color: var(--danger); font-weight: 600; }
+.lp-anchor { margin-right: 5px; color: var(--accent); font-size: 11px; }
+.lp-arrow { background: none; border: 0; pointer-events: none; }
+.lp-arrow svg { display: block; }
+.lp-go { padding: 0; background: none; border: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
+.lp-go:hover { color: #fff; }
+.lp-meta .lp-alt { display: block; white-space: normal; color: var(--muted); }

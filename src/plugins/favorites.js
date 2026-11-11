@@ -18,6 +18,7 @@
 // the user's call.
 import './favorites.css';
 import { getPortal } from '../api/intel.js';
+import { learnMods } from '../state/mods.js';
 import { adaptPortalDetail } from '../adapter/model.js';
 import { favorites, favLabel } from '../state/favorites.js';
 import { bus } from '../state/bus.js';
@@ -176,6 +177,7 @@ export function mountFavorites(menu, engine) {
     busy = true; row.classList.add('loading');
     try {
       const d = adaptPortalDetail(await getPortal(f.id));
+      learnMods(d);
       // it may have been renamed or moved since it was starred — resync
       const lat = Number.isFinite(d.lat) ? d.lat : f.lat;
       const lng = Number.isFinite(d.lng) ? d.lng : f.lng;

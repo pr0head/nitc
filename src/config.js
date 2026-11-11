@@ -52,4 +52,16 @@ export const GAME = {
   stackHalf: [1, 0.5, 0.5, 0.5],          // multi-hack, heat sink
   stackLinkAmp: [1, 0.25, 0.125, 0.125],  // link amp
   ap: { resonator: 75, link: 187, field: 750 }, // AP for destroying each
+  apMake: { link: 313, field: 1250 },          // AP for creating each
+  outLinks: 8,            // outgoing links per portal, before SoftBank mods
+  modsPerAgent: 2,        // mods one agent may deploy on a portal
+  // range mods for link planning, where no portal card is at hand (classic
+  // values; a spec seen on a card replaces its type+rarity, state/mods.js)
+  rangeMods: [
+    { kind: 'link_amp_rare', name: 'Link Amp', type: 'link_amp', rarity: 'rare', range: 2 },
+    { kind: 'link_amp_very_rare', name: 'Link Amp', type: 'link_amp', rarity: 'very_rare', range: 7 },
+    { kind: 'softbank_very_rare', name: 'SoftBank Ultra Link', type: 'softbank', rarity: 'very_rare', range: 5 },
+  ],
+  // resonators one agent may deploy on a portal, by level
+  resoPerAgent: { 8: 1, 7: 1, 6: 2, 5: 2, 4: 4, 3: 4, 2: 4, 1: 8 },
 };

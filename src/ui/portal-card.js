@@ -20,6 +20,7 @@ import { GAME } from '../config.js';
 import { fcol, ll } from '../map/render.js';
 import { geodesicCircle, destination } from '../map/geo.js';
 import { getPortal, getActivity } from '../api/intel.js';
+import { learnMods } from '../state/mods.js';
 import { adaptPortalDetail, adaptEvent } from '../adapter/model.js';
 import * as G from '../game/portal.js';
 import { favorites } from '../state/favorites.js';
@@ -476,6 +477,7 @@ export function mountPortalCard(engine) {
     inflight = new AbortController();
     try {
       const d = adaptPortalDetail(await getPortal(p.id, inflight.signal));
+      learnMods(d); // range mods for the link plan
       if (my !== reqId) return; // superseded by a newer click
       render(d);
     } catch (e) {

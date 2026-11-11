@@ -4,6 +4,8 @@
 // the draw panel counts what stands in the plan's way and opens a panel with
 // what to do about it: docked by the draw tools, a bottom sheet on an upright
 // phone, and with no backdrop, so the map stays in sight.
+// The panel has a second tab, the link plan (draw-linkplan.js): what building
+// the plan takes. It shows the links' directions on the map instead of rings.
 //
 // A link falls with either of its portals: an enemy one is destroyed, one's
 // own is flipped by a virus (a flip drops the portal's links by itself). The
@@ -45,10 +47,12 @@ import { greatArc, arcsCross, geodesicPath } from '../map/geo.js';
 import { backOpen, backClosed } from '../ui/back.js';
 import { narrow } from '../ui/phone.js';
 import { esc } from '../ui/esc.js';
+import { linkPlan, planHtml, planArrows } from './draw-linkplan.js';
 
 const fmtLen = (m) => (m >= 1000 ? `${+(m / 1000).toFixed(1)} км` : `${m} м`);
 const xicon = (col) => `<svg width="14" height="14" viewBox="0 0 14 14"><path d="M3 3l8 8M11 3l-8 8" stroke="#fff" stroke-width="5" stroke-linecap="round"/><path d="M3 3l8 8M11 3l-8 8" stroke="${col}" stroke-width="2.5" stroke-linecap="round"/></svg>`;
 const X_LINK = '#ff2d2d', X_SELF = '#e0b000';
+const PLAN_RING = '#ff8c1a'; // the link plan's picked portal: seen on dark and light tiles
 const SELF_ROWS = 30;
 const UNFOCUS = 'нажмите ещё раз, чтобы снять выделение';
 const MERGE_PX = 8;
@@ -172,6 +176,10 @@ export function createCrossCheck({ map, engine, ov, btn, container, anchor }) {
   // while it is still there
   let focus = null;
   let inv = null, invState = 'idle'; // the agent's virus counts, fetched on demand
+  // the panel's tab: 'cross' (what stands in the way) or 'plan' (the link
+  // plan, draw-linkplan.js); the plan tab's picked portal is its own focus
+  let tab = 'cross', lp = null, pfocus = null;
+  try { if (localStorage.getItem('nitc.dx.tab') === 'plan') tab = 'plan'; } catch {}
 
   function compute() {
     layer.clearLayers();
@@ -211,6 +219,8 @@ export function createCrossCheck({ map, engine, ov, btn, container, anchor }) {
     empty = !plan.length;
 
     offer = makeOffer(data);
+    lp = tab === 'plan' && !empty ? linkPlan(model, data) : null;
+    if (pfocus && !lp?.portals.some((p) => p.key === pfocus)) pfocus = null;
     if (focus?.portal && !offer.some((o) => o.key === focus.portal)) focus = null;
     if (focus?.self && !selfPts.some((x) => x[0] === focus.self[0] && x[1] === focus.self[1])) focus = null;
     badge();
@@ -269,6 +279,12 @@ export function createCrossCheck({ map, engine, ov, btn, container, anchor }) {
 
   function paintRings() {
     rings.clearLayers();
+    if (tab === 'plan') {
+      if (lp) planArrows(lp, map, rings, ov.pane);
+      const p = pfocus && lp?.portals.find((q) => q.key === pfocus);
+      if (p) L.circleMarker([p.lat, p.lng], { radius: 16, color: PLAN_RING, weight: 4, fill: false, interactive: false, className: 'dx-pulse', ...ov }).addTo(rings);
+      return;
+    }
     const fp = focus?.portal;
     // the focused portal's links first, under its ring and enlarged crosses
     if (fp) {
@@ -297,13 +313,28 @@ export function createCrossCheck({ map, engine, ov, btn, container, anchor }) {
   // ---- the panel ----
   const panel = document.createElement('div');
   panel.className = 'dx-panel'; panel.hidden = true;
-  panel.innerHTML = '<div class="dx-head"><span class="dx-title">Пересечения плана</span>' +
+  panel.innerHTML = '<div class="dx-head"><div class="seg dx-tabs"><button type="button" data-tab="cross">Небо</button>' +
+    '<button type="button" data-tab="plan">Земля</button></div>' +
     '<button type="button" class="dx-close" title="Закрыть">×</button></div><div class="dx-body"></div>';
   container.append(panel);
   L.DomEvent.disableClickPropagation(panel);
   L.DomEvent.disableScrollPropagation(panel);
   const body = panel.querySelector('.dx-body');
   const isOpen = () => !panel.hidden;
+  const tabs = panel.querySelector('.dx-tabs');
+  const markTab = () => tabs.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.tab === tab));
+  markTab();
+  tabs.addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-tab]');
+    if (b) setTab(b.dataset.tab);
+  });
+  function setTab(t) {
+    if (t === tab) return;
+    tab = t; markTab();
+    try { localStorage.setItem('nitc.dx.tab', tab); } catch {}
+    focus = null; pfocus = null;
+    compute(); paintRings(); body.scrollTop = 0;
+  }
 
   // beside the draw panel; an upright phone's sheet sizes itself in CSS
   function place() {
@@ -325,14 +356,14 @@ export function createCrossCheck({ map, engine, ov, btn, container, anchor }) {
     panel.hidden = false; backOpen(close);
     ringsOn = true; paintRings();
     paint(); badge();
-    bringIn([...offer.map((p) => [p.lat, p.lng]), ...selfPts]);
+    bringIn(tab === 'plan' ? (lp?.portals || []).map((p) => [p.lat, p.lng]) : [...offer.map((p) => [p.lat, p.lng]), ...selfPts]);
   }
   // keepRings: a jump to a portal on an upright phone hands the bottom to its card
   function close(keepRings) {
     if (panel.hidden) return;
     panel.hidden = true; backClosed(close);
     place();
-    if (keepRings !== true) { ringsOn = false; focus = null; rings.clearLayers(); }
+    if (keepRings !== true) { ringsOn = false; focus = null; pfocus = null; rings.clearLayers(); }
     badge();
   }
   panel.querySelector('.dx-close').addEventListener('click', close);
@@ -360,6 +391,11 @@ export function createCrossCheck({ map, engine, ov, btn, container, anchor }) {
   }
 
   function paint() {
+    if (tab === 'plan') {
+      body.innerHTML = lp ? planHtml(lp, pfocus, UNFOCUS, { links: blocking.length, self: selfPts.length, partial: why.length > 0 }) : '';
+      place();
+      return;
+    }
     const n = blocking.length;
     const parts = [];
     if (!n && !selfPts.length) {
@@ -427,9 +463,19 @@ export function createCrossCheck({ map, engine, ov, btn, container, anchor }) {
   // (on an upright phone it takes the bottom, the rings stay). The row in
   // focus, pressed again, lets go of it.
   body.addEventListener('click', (e) => {
+    if (e.target.closest('.lp-go')) { setTab('cross'); return; }
     const r = e.target.closest('.lm-row');
     if (!r) return;
-    if (r.parentElement.classList.contains('on')) { focus = null; paintRings(); paint(); return; }
+    if (r.parentElement.classList.contains('on')) { focus = null; pfocus = null; paintRings(); paint(); return; }
+    if (r.dataset.p != null) {
+      const p = lp?.portals.find((q) => q.key === r.dataset.p);
+      if (!p) return;
+      pfocus = p.key; paintRings(); paint();
+      if (narrow.matches && p.id) close(true);
+      bringIn([[p.lat, p.lng]]);
+      if (p.id) bus.emit('openPortal', { portal: { id: p.id, name: p.name, lat: p.lat, lng: p.lng, faction: p.faction } });
+      return;
+    }
     if (r.dataset.x != null) {
       const x = selfPts[+r.dataset.x];
       if (!x) return;
@@ -454,6 +500,9 @@ export function createCrossCheck({ map, engine, ov, btn, container, anchor }) {
     raf = requestAnimationFrame(() => { raf = 0; if (on) compute(); });
   }
   bus.on('mapData', () => { if (on) compute(); });
+  bus.on('modsLearned', () => { if (on) compute(); }); // the link plan's mod ways
+  // arrows show on links long enough on screen: a zoom changes which
+  map.on('zoomend', () => { if (on && ringsOn && tab === 'plan') paintRings(); });
 
   return {
     show() { on = true; layer.addTo(map); rings.addTo(map); compute(); },
