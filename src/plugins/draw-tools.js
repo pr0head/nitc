@@ -15,8 +15,8 @@
 //
 // Clone copies a shape past one of its vertices: click a vertex and the other
 // vertices stay put — how nested fields over a shared base get drawn. The
-// copy's new vertex takes the nearest free portal past that vertex whose new
-// edges cross nothing of the plan.
+// copy's new vertex takes the free portal nearest to that vertex whose copy
+// covers it, crosses nothing of the plan and is not a shape already there.
 //
 // Edit shows one handle per portal, with a count where several shapes stand
 // on it. A drag moves one vertex (the latest shape's); with Ctrl (Cmd) held,
@@ -512,9 +512,10 @@ export function mountDrawTools(container, engine, menu) {
   }
 
   // ---- clone ----
-  // Every vertex but the clicked one is kept; that one moves outwards, away
-  // from the middle of the others: the copy takes the free portal nearest to a
-  // point a fixed number of SCREEN pixels out that way (draw-snap.js).
+  // Every vertex but the clicked one is kept; that one moves to the nearest
+  // portal that nests the copy over it (draw-snap.js). `toward`, a fixed number
+  // of SCREEN pixels out from the middle of the others, is where it stays free
+  // while the portals are not all known.
   const CLONE_PX = 60;
   function cloneAt(si, vi) {
     const s = model[si];
