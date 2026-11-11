@@ -254,3 +254,20 @@
 .lr-fold:hover { color: #fff; }
 .lr-bar.folded .lr-head { border-bottom: 0; cursor: pointer; }
 .lr-dot { width: 8px; height: 8px; border-radius: 50%; background: #ffb86b; }
+.draw-nest {
+  position: absolute; z-index: 990; width: min(300px, calc(100vw - 80px)); padding: 8px 10px;
+  background: var(--panel-bg); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 4px 16px #0008;
+  font-size: 12px; line-height: 1.35; color: var(--muted);
+}
+.draw-nest[hidden] { display: none; }
+.draw-nest .dn-h { display: block; margin-bottom: 4px; color: var(--text); font-weight: 600; }
+.dn-opt { display: flex; align-items: flex-start; gap: 8px; min-height: 36px; padding: 4px 0; cursor: pointer; }
+.dn-opt input { margin: 2px 0 0; accent-color: var(--accent); }
+.dn-opt b { color: var(--text); }
+.dn-btns { display: flex; gap: 6px; margin-top: 6px; }
+.dn-btns button {
+  flex: 1; min-height: 36px; background: var(--input); border: 1px solid var(--line); border-radius: 6px;
+  color: var(--text); font: 600 12px var(--font); cursor: pointer;
+}
+.dn-btns .dn-ok { border-color: var(--accent); }
+.dn-btns button:disabled { opacity: 0.5; cursor: default; }

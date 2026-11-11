@@ -18,6 +18,10 @@
 // copy's new vertex takes the free portal nearest to that vertex whose copy
 // covers it, crosses nothing of the plan and is not a shape already there.
 //
+// Matryoshka: tap a triangle's vertex and the deepest stack of fields nested
+// over the other two is worked out among the portals on screen — inside the
+// field, or with another outer vertex (draw-nest.js); a box offers both.
+//
 // Edit shows one handle per portal, with a count where several shapes stand
 // on it. A drag moves one vertex (the latest shape's); with Ctrl (Cmd) held,
 // or after a long press on a touch screen, it moves them all — a hub goes to
@@ -60,7 +64,8 @@ import { createFavPicker } from './draw-favorites.js';
 import { createCrossCheck } from './draw-crosses.js';
 import { cleanNitc } from './draw-linkplan.js';
 import { createLengths } from './draw-lengths.js';
-import { createSnap, keyOf, LOOSE } from './draw-snap.js';
+import { createSnap, keyOf, LOOSE, planArcs } from './draw-snap.js';
+import { nestChains, createNestBox } from './draw-nest.js';
 
 // a vertex handle's grab area around its dot: a finger needs far more room
 // than a mouse
@@ -76,6 +81,7 @@ const I = {
   line: svg(16, '<circle cx="5" cy="19" r="2"/><circle cx="19" cy="5" r="2"/><line x1="6.5" y1="17.5" x2="17.5" y2="6.5"/>'),
   tri: svg(16, '<polygon points="12,4 20,20 4,20"/>'),
   clone: svg(16, '<polygon points="9,2 16,14 2,14"/><polygon points="15,10 22,22 8,22"/>'),
+  nest: svg(16, '<polygon points="12,3 22,21 2,21"/><polygon points="12,9 17.5,19 6.5,19"/><polygon points="12,14.5 14.2,19 9.8,19"/>'),
   edit: svg(16, '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>'),
   // a ruler laid aslant, its ticks along the top edge
   ruler: svg(16, '<path d="M3 15.5L15.5 3 21 8.5 8.5 21z"/><path d="M7.5 11l2 2M10.5 8l2 2M13.5 5l2 2"/>'),
@@ -109,6 +115,7 @@ export function mountDrawTools(container, engine, menu) {
   let shapeLayers = [];              // index → Leaflet layer
   let model = [];                    // filled from the active plan
   const loose = new Set();           // free vertices (keys) put this session, waiting for the portals
+  let nestBox = null;                // the matryoshka's box (set up below)
 
   const save = () => bus.emit('drawChanged', model);
   // a plan switch (or a cleared plan) replaces the model wholesale;
@@ -131,6 +138,7 @@ export function mountDrawTools(container, engine, menu) {
   let flashT = 0;
   const HINTS = {
     clone: ['Клон', 'Нажмите вершину — копия фигуры встанет на ближайший свободный портал за ней'],
+    nest: ['Матрёшка', 'Нажмите вершину треугольника — над двумя другими встанут вложенные поля по порталам на экране'],
     delete: ['Удаление', 'Нажмите на фигуру, чтобы удалить её'],
   };
   function hint() {
@@ -182,6 +190,7 @@ export function mountDrawTools(container, engine, menu) {
   toolBtn(secDraw, null, STAR(16), 'Вершины из избранного', () => picker.open());
   const favBtn = secDraw.lastChild; favBtn.hidden = true; // only with line/triangle on
   toolBtn(secDraw, 'clone', I.clone, 'Клон: нажмите вершину — копия встанет на ближайший свободный портал за ней', () => toggleTool('clone'));
+  toolBtn(secDraw, 'nest', I.nest, 'Матрёшка: нажмите вершину треугольника — самая глубокая стопка вложенных полей на экране', () => toggleTool('nest'));
   const colorInp = document.createElement('input');
   colorInp.type = 'color'; colorInp.className = 'draw-color'; colorInp.value = color; colorInp.title = 'Цвет';
   colorInp.addEventListener('input', () => { color = colorInp.value; });
@@ -230,9 +239,9 @@ export function mountDrawTools(container, engine, menu) {
     Object.values(toolBtns).forEach((b) => b.classList.remove('on'));
     if (t && toolBtns[t]) toolBtns[t].classList.add('on');
     favBtn.hidden = !DRAW.includes(t);
-    clearPreview(); hint();
+    clearPreview(); hint(); nestBox?.close();
     map.getContainer().style.cursor = DRAW.includes(t) || t === 'delete' ? 'crosshair' : '';
-    if (t === 'edit' || t === 'clone') { editLayer.addTo(map); renderHandles(); }
+    if (t === 'edit' || t === 'clone' || t === 'nest') { editLayer.addTo(map); renderHandles(); }
     else { editLayer.clearLayers(); map.removeLayer(editLayer); }
     redraw(); // shapes only take clicks while deleting
     // only drawing tools capture portal clicks as vertices; in edit/delete (or
@@ -334,7 +343,7 @@ export function mountDrawTools(container, engine, menu) {
   }
 
   // Escape in the picker closes the picker only
-  document.addEventListener('keydown', (e) => { if (active && e.key === 'Escape' && !picker.isOpen) { cancelDraw(); hint(); } });
+  document.addEventListener('keydown', (e) => { if (active && e.key === 'Escape' && !picker.isOpen) { cancelDraw(); nestBox?.close(); hint(); } });
 
   // ---- vertices from the favorites ----
   const picker = createFavPicker({
@@ -438,7 +447,7 @@ export function mountDrawTools(container, engine, menu) {
       }
     });
     sizeLabels(); lengths.update(model);
-    if (active && (tool === 'edit' || tool === 'clone')) renderHandles();
+    if (active && (tool === 'edit' || tool === 'clone' || tool === 'nest')) renderHandles();
     crosses.update(model);
   }
   bus.on('highlightChanged', redraw);
@@ -446,13 +455,16 @@ export function mountDrawTools(container, engine, menu) {
   function renderHandles() {
     editLayer.clearLayers();
     const hs = handleSize();
-    if (tool === 'clone') {
-      model.forEach((s, si) => s.latLngs.forEach((v, vi) => {
-        L.marker([v.lat, v.lng], {
-          keyboard: false, pane: PANE,
-          icon: L.divIcon({ className: 'draw-handle draw-clone', iconSize: [hs, hs] }),
-        }).on('click', (ev) => { L.DomEvent.stop(ev); cloneAt(si, vi); }).addTo(editLayer);
-      }));
+    if (tool === 'clone' || tool === 'nest') {
+      model.forEach((s, si) => {
+        if (tool === 'nest' && (s.type !== 'polygon' || s.latLngs.length !== 3)) return; // triangles only
+        s.latLngs.forEach((v, vi) => {
+          L.marker([v.lat, v.lng], {
+            keyboard: false, pane: PANE,
+            icon: L.divIcon({ className: 'draw-handle draw-clone', iconSize: [hs, hs] }),
+          }).on('click', (ev) => { L.DomEvent.stop(ev); (tool === 'clone' ? cloneAt : nestAt)(si, vi); }).addTo(editLayer);
+        });
+      });
       return;
     }
     // one handle per point, over the vertices of every shape standing there
@@ -540,6 +552,43 @@ export function mountDrawTools(container, engine, menu) {
     if (r.free) { loose.add(keyOf(np)); flash(LOOSE, false); }
     model.push({ type: s.type, color: s.color || color, latLngs });
     save(); redraw(); // clone stays on: the next nesting is one more tap
+  }
+
+  // ---- matryoshka ----
+  // the two other vertices are the base; the stacks come from draw-nest.js
+  // and a box in the hint's place offers them, previewed on the map
+  nestBox = createNestBox({
+    map, pane: PANE, container,
+    place: (box) => {
+      hintEl.hidden = true; clearTimeout(flashT);
+      box.style.left = panel.offsetLeft + panel.offsetWidth + 8 + 'px';
+      box.style.top = getComputedStyle(hintEl).top;
+    },
+    onCancel: () => hint(),
+    onApply(s, C, o) {
+      const vi = s.latLngs.findIndex((v) => keyOf(v) === keyOf(C));
+      for (const p of o.add) {
+        model.push({ type: 'polygon', color: s.color || color, latLngs: s.latLngs.map((v, i) => (i === vi ? { lat: p.lat, lng: p.lng } : { lat: v.lat, lng: v.lng })) });
+      }
+      if (o.drop) model.splice(model.indexOf(s), 1);
+      save(); redraw();
+      flash(`Добавлено полей: ${o.add.length}`, false);
+    },
+  });
+  const triKey = (vs) => vs.map(keyOf).sort().join('|');
+  function nestAt(si, vi) {
+    const s = model[si];
+    if (!s) return;
+    if (!snap.full()) { flash('Приблизьте карту: для матрёшки нужны все порталы на экране (зум 15 и ближе)'); return; }
+    const [A, B] = s.latLngs.filter((_, i) => i !== vi), C = s.latLngs[vi];
+    const arcs = planArcs(model.filter((x) => x !== s));
+    const chains = nestChains(A, B, C, snap.targets().map((t) => t.p), arcs);
+    const have = new Set(model.filter((x) => x.type === 'polygon' && x.latLngs.length === 3).map((x) => triKey(x.latLngs)));
+    const exists = (p) => have.has(triKey([A, B, p]));
+    if (chains.inside.length < 2 && chains.free.length <= chains.inside.length) {
+      flash('Вложить нечего: на экране нет порталов для полей над этим основанием'); return;
+    }
+    nestBox.show(s, A, B, C, chains, exists);
   }
 
   // ---- ops ----

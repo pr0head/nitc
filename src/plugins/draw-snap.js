@@ -26,7 +26,7 @@ const AUTO_PX = 30; // a free vertex this close to a portal takes it on zoom-in
 export const keyOf = (p) => (+p.lat).toFixed(7) + ',' + (+p.lng).toFixed(7);
 
 // plan edges as arcs, for the crossing test
-function planArcs(model) {
+export function planArcs(model) {
   const out = [];
   for (const s of model) {
     const v = s.latLngs, n = s.type === 'polygon' ? v.length : v.length - 1;
@@ -133,5 +133,5 @@ export function createSnap({ map, engine }) {
     return best && best.pt.distanceTo(toward) <= reach ? { p: best.p } : { free: true };
   }
 
-  return { targets, nearest, place, settle, cloneTarget };
+  return { targets, nearest, place, settle, cloneTarget, full };
 }
