@@ -325,6 +325,7 @@ export function planHtml(r, focusKey, unfocus, cross, view = 'portals') {
 function stepsHtml(r, focusKey) {
   const { steps, manual } = r.order;
   const parts = [];
+  if (steps.length) parts.push('<button type="button" class="lp-unpin lp-start">▶ Начать линковку</button>');
   steps.forEach((st, i) => {
     const p = st.portal;
     const meta = [`→ ${esc(st.links.map((e) => nameOf(e.to)).join(', '))}`];

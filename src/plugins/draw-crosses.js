@@ -48,6 +48,7 @@ import { backOpen, backClosed } from '../ui/back.js';
 import { narrow } from '../ui/phone.js';
 import { esc } from '../ui/esc.js';
 import { linkPlan, planHtml, planArrows, planNumbers, flipLink, unpinAll, moveStep } from './draw-linkplan.js';
+import { createRun } from './draw-linkrun.js';
 
 const fmtLen = (m) => (m >= 1000 ? `${+(m / 1000).toFixed(1)} км` : `${m} м`);
 const xicon = (col) => `<svg width="14" height="14" viewBox="0 0 14 14"><path d="M3 3l8 8M11 3l-8 8" stroke="#fff" stroke-width="5" stroke-linecap="round"/><path d="M3 3l8 8M11 3l-8 8" stroke="${col}" stroke-width="2.5" stroke-linecap="round"/></svg>`;
@@ -182,6 +183,9 @@ export function createCrossCheck({ map, engine, ov, btn, container, anchor, save
   let tab = 'cross', lp = null, pfocus = null;
   let pview = 'portals'; // the plan tab's view: 'portals' or 'steps'
   let loadedAt = 0, reloading = false; // the last map load, a reload asked for
+  // the steps walked on the ground (draw-linkrun.js); its warning about a
+  // crossing opens the sky tab
+  const run = createRun({ map, engine, ov, container, onOpenSky: () => { setTab('cross'); open(); } });
   try {
     if (localStorage.getItem('nitc.dx.tab') === 'plan') tab = 'plan';
     if (localStorage.getItem('nitc.dx.pview') === 'steps') pview = 'steps';
@@ -196,11 +200,12 @@ export function createCrossCheck({ map, engine, ov, btn, container, anchor, save
     const planned = new Set(plan.map((p) => p.spot));
     points = [];
     const hit = new Set();
+    const crossed = new Set(); // plan edges a map link crosses (the run's warning)
     for (const p of plan) {
       for (const q of links) {
         if (planned.has(q.spot)) continue;
         const x = arcsCross(p.arc, q.arc);
-        if (x) { points.push({ x, q }); hit.add(q); }
+        if (x) { points.push({ x, q }); hit.add(q); crossed.add(p.spot); }
       }
     }
     blocking = [...hit];
@@ -225,7 +230,11 @@ export function createCrossCheck({ map, engine, ov, btn, container, anchor, save
     empty = !plan.length;
 
     offer = makeOffer(data);
-    lp = tab === 'plan' && !empty ? linkPlan(model, data) : null;
+    lp = (tab === 'plan' || run.active()) && !empty ? linkPlan(model, data) : null;
+    if (run.active()) {
+      if (lp) run.update(lp, new Set(lp.links.filter((e) => crossed.has(spot(e.a, e.b))).map((e) => e.id)));
+      else run.stop();
+    }
     if (pfocus && !lp?.portals.some((p) => p.key === pfocus)) pfocus = null;
     if (focus?.portal && !offer.some((o) => o.key === focus.portal)) focus = null;
     if (focus?.self && !selfPts.some((x) => x[0] === focus.self[0] && x[1] === focus.self[1])) focus = null;
@@ -376,6 +385,7 @@ export function createCrossCheck({ map, engine, ov, btn, container, anchor, save
     // a virus count only matters with own portals to flip; asked once per opening
     if (offer.some((p) => p.own)) loadInv();
     panel.hidden = false; backOpen(close);
+    run.sheet(true);
     ringsOn = true; paintRings();
     paint(); badge();
     bringIn(tab === 'plan' ? (lp?.portals || []).map((p) => [p.lat, p.lng]) : [...offer.map((p) => [p.lat, p.lng]), ...selfPts]);
@@ -385,6 +395,7 @@ export function createCrossCheck({ map, engine, ov, btn, container, anchor, save
     if (panel.hidden) return;
     panel.hidden = true; backClosed(close);
     place();
+    run.sheet(false);
     if (keepRings !== true) { ringsOn = false; focus = null; pfocus = null; rings.clearLayers(); }
     badge();
   }
@@ -513,6 +524,12 @@ export function createCrossCheck({ map, engine, ov, btn, container, anchor, save
     }
     const mv = e.target.closest('[data-mv]');
     if (mv) { if (lp) { moveStep(lp, +mv.dataset.mv, +mv.dataset.d); save(); compute(); } return; }
+    if (e.target.closest('.lp-start')) {
+      if (!lp) return;
+      if (narrow.matches) close();
+      run.start(lp);
+      return;
+    }
     if (e.target.closest('.lp-unorder')) { unpinAll(model, 'step'); save(); compute(); return; }
     if (e.target.closest('.lp-unpin')) { unpinAll(model, 'dir'); save(); compute(); return; }
     if (e.target.closest('.lp-card')) {
@@ -564,7 +581,7 @@ export function createCrossCheck({ map, engine, ov, btn, container, anchor, save
   return {
     show() { on = true; layer.addTo(map); rings.addTo(map); compute(); },
     hide() {
-      on = false; close();
+      on = false; close(); run.stop();
       layer.clearLayers(); rings.clearLayers(); map.removeLayer(layer); map.removeLayer(rings);
     },
     update,
