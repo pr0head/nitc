@@ -87,6 +87,14 @@ See `docs/architecture.md` for the detailed module plan and data model.
 - Design every UI for phones in **both orientations**: portrait (~360px wide) and
   landscape (~360px tall). Touch targets ≥ ~36px; no rows that only fit a desktop.
 
+## Release announcements (players' chat, in Russian)
+- Only what players get: each new feature in a line or two, what it does for them.
+  No technical details (API, data sources, images, caching, S2…), and no fixes
+  unless asked.
+- First line is the release name in bold (`**NITC X.Y.Z**`); each feature starts
+  with a fitting emoji (🏅 medals, 📊 rating…).
+- Always say whether the Android app needs updating (usually: no, just restart it).
+
 ## Before you start a task
 - Read `docs/NETGRESS_MAP_API.md` for anything touching the network.
 - Ask before: choosing/adding a framework or map engine, changing the public README's
