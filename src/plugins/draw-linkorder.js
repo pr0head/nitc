@@ -11,8 +11,8 @@
 //
 // The automatic order walks the portals: next is one not under a closed
 // field, whose links close no field over a portal still to come and lose no
-// field; of those, the one whose links are in the most fields still open
-// (the base before the points), then the nearest to the last step (the first
+// field; of those, the one whose links are shared by the most fields still
+// open (the base before the points: one crew starts at an anchor), then the nearest to the last step (the first
 // step: the one under the most plan fields, the innermost). Where no portal
 // fits, the best of the rest goes anyway and the check below flags it.
 //
@@ -111,7 +111,10 @@ export function orderSteps(r) {
     const whole = safe.filter((s) => !loses(s));
     const pool = whole.length ? whole : safe.length ? safe : free.length ? free : rest;
     const score = (s) => [
-      -s.links.reduce((n, e) => n + open(e), 0),
+      // a link shared by many open fields counts as their square: the base of
+      // nested fields goes before any of its points (one link in two fields
+      // weighs more than two links in one field each)
+      -s.links.reduce((n, e) => n + open(e) ** 2, 0),
       last ? far(last, s.portal) : -under.get(s.portal).length,
     ];
     const better = (x, y) => { const a = score(x), b = score(y); return a[0] !== b[0] ? a[0] < b[0] : a[1] < b[1]; };

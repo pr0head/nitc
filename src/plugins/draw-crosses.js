@@ -41,14 +41,14 @@
 import L from 'leaflet';
 import { bus } from '../state/bus.js';
 import { me } from '../state/me.js';
-import { FACTION } from '../config.js';
+import { FACTION, MAP } from '../config.js';
 import { getInventory } from '../api/intel.js';
 import { greatArc, arcsCross, geodesicPath } from '../map/geo.js';
 import { backOpen, backClosed } from '../ui/back.js';
 import { narrow } from '../ui/phone.js';
 import { esc } from '../ui/esc.js';
 import { linkPlan, planHtml, planArrows, planNumbers, flipLink, unpinAll, moveStep } from './draw-linkplan.js';
-import { createRun } from './draw-linkrun.js';
+import { createRun, doneLinks, resetDone } from './draw-linkrun.js';
 
 const fmtLen = (m) => (m >= 1000 ? `${+(m / 1000).toFixed(1)} км` : `${m} м`);
 const xicon = (col) => `<svg width="14" height="14" viewBox="0 0 14 14"><path d="M3 3l8 8M11 3l-8 8" stroke="#fff" stroke-width="5" stroke-linecap="round"/><path d="M3 3l8 8M11 3l-8 8" stroke="${col}" stroke-width="2.5" stroke-linecap="round"/></svg>`;
@@ -295,9 +295,13 @@ export function createCrossCheck({ map, engine, ov, btn, container, anchor, save
   // a portal picked in the plan tab: its row opens with its links, the card
   // beside it where there is room (an upright phone keeps the sheet: the card
   // is a button in the row)
-  function pickPlan(p) {
+  // (a step: the map on it at a zoom with every portal shown)
+  function pickPlan(p, step) {
     pfocus = p.key; paintRings(); paint();
-    bringIn([[p.lat, p.lng]]);
+    if (step) {
+      if (narrow.matches) close(true);
+      map.setView([p.lat, p.lng], Math.max(map.getZoom(), MAP.minPortalZoom));
+    } else bringIn([[p.lat, p.lng]]);
     if (p.id && !narrow.matches) bus.emit('openPortal', { portal: { id: p.id, name: p.name, lat: p.lat, lng: p.lng, faction: p.faction } });
   }
 
@@ -425,7 +429,7 @@ export function createCrossCheck({ map, engine, ov, btn, container, anchor, save
 
   function paint() {
     if (tab === 'plan') {
-      body.innerHTML = lp ? planHtml(lp, pfocus, UNFOCUS, { links: blocking.length, self: selfPts.length, partial: why.length > 0 }, pview) : '';
+      body.innerHTML = lp ? planHtml(lp, pfocus, UNFOCUS, { links: blocking.length, self: selfPts.length, partial: why.length > 0 }, pview, doneLinks()) : '';
       place();
       return;
     }
@@ -524,6 +528,7 @@ export function createCrossCheck({ map, engine, ov, btn, container, anchor, save
     }
     const mv = e.target.closest('[data-mv]');
     if (mv) { if (lp) { moveStep(lp, +mv.dataset.mv, +mv.dataset.d); save(); compute(); } return; }
+    if (e.target.closest('.lp-reprog')) { resetDone(); paint(); return; }
     if (e.target.closest('.lp-start')) {
       if (!lp) return;
       if (narrow.matches) close();
@@ -545,7 +550,7 @@ export function createCrossCheck({ map, engine, ov, btn, container, anchor, save
     if (r.dataset.p != null) {
       const p = lp?.portals.find((q) => q.key === r.dataset.p);
       if (!p) return;
-      pickPlan(p);
+      pickPlan(p, !!r.dataset.step);
       return;
     }
     if (r.dataset.x != null) {
@@ -575,6 +580,8 @@ export function createCrossCheck({ map, engine, ov, btn, container, anchor, save
   // the age line keeps up while the sky tab is open
   setInterval(() => { if (isOpen() && tab === 'cross' && !reloading) paint(); }, 15000);
   bus.on('modsLearned', () => { if (on) compute(); }); // the link plan's mod ways
+  bus.on('linkRunProgress', () => { if (isOpen() && tab === 'plan') paint(); });
+  bus.on('linkRunReset', () => { if (isOpen() && tab === 'plan') paint(); });
   // arrows show on links long enough on screen: a zoom changes which
   map.on('zoomend', () => { if (on && ringsOn && tab === 'plan') paintRings(); });
 

@@ -185,7 +185,7 @@
 .lp-move button:not(:disabled):hover { border-color: var(--accent); }
 .lp-num { background: none; border: 0; pointer-events: none; }
 .lp-num b {
-  position: absolute; left: 7px; bottom: 5px; min-width: 16px; padding: 0 3px; border-radius: 8px;
+  position: absolute; left: 1px; bottom: 1px; min-width: 16px; padding: 0 3px; border-radius: 8px 8px 8px 2px;
   background: #ffe14a; color: #000; font: 700 11px/16px var(--font); text-align: center; box-shadow: 0 0 0 1.5px #000;
 }
 .lp-num.bad b { background: #ff2d2d; color: #fff; }
@@ -240,3 +240,13 @@
   }
   body:has(.lr-bar:not([hidden])) .leaflet-bottom.leaflet-right { bottom: calc(var(--sheet-h, 0px) + 10px); }
 }
+.lp-run { display: flex; gap: 6px; margin: 4px 6px 8px; }
+.lp-run .lp-unpin { margin: 0; }
+.lp-run .lp-start { flex: 1; width: auto; }
+.lp-n.ok { background: #3fca4a; color: #000; }
+.lr-fin { display: flex; align-items: center; gap: 8px; padding: 6px 11px 0; color: var(--muted); }
+.lr-fin .lr-reset {
+  margin-left: auto; min-height: 32px; padding: 4px 9px; background: var(--input); border: 1px solid var(--line);
+  border-radius: 6px; color: var(--text); font: 600 12px var(--font); cursor: pointer;
+}
+.lr-undo { flex: 1; }

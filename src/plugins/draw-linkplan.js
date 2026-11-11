@@ -283,8 +283,9 @@ export function cleanNitc(it) {
 // ---- the panel tab ----
 // cross: what the crossings check found ({links, self, partial}) — the plan
 // can't be built as drawn while something crosses it; a tap goes to the sky tab
-// view: 'portals' (keys, outgoing, range per portal) or 'steps' (the order)
-export function planHtml(r, focusKey, unfocus, cross, view = 'portals') {
+// view: 'portals' (keys, outgoing, range per portal) or 'steps' (the order);
+// done: the link run's done links (ticks in the steps)
+export function planHtml(r, focusKey, unfocus, cross, view = 'portals', done = new Set()) {
   const parts = [];
   parts.push(`<div class="dx-sum lp-sum"><b>${plural(r.portals.length, 'портал', 'портала', 'порталов')}</b> · ` +
     `<b>${plural(r.links.length, 'линк', 'линка', 'линков')}</b> · <b>${plural(r.fields, 'поле', 'поля', 'полей')}</b><br>` +
@@ -303,7 +304,7 @@ export function planHtml(r, focusKey, unfocus, cross, view = 'portals') {
   if (warn.length) parts.push(`<ul class="dx-why">${warn.map((w) => `<li>${w}</li>`).join('')}</ul>`);
   parts.push(`<div class="seg lp-view"><button type="button" data-view="portals" class="${view === 'steps' ? '' : 'on'}">Порталы</button>` +
     `<button type="button" data-view="steps" class="${view === 'steps' ? 'on' : ''}">Шаги ${r.order.steps.length}</button></div>`);
-  if (view === 'steps') { parts.push(stepsHtml(r, focusKey)); return parts.join(''); }
+  if (view === 'steps') { parts.push(stepsHtml(r, focusKey, done)); return parts.join(''); }
 
   const anchors = r.portals.filter((p) => p.anchor), rest = r.portals.filter((p) => !p.anchor);
   if (anchors.length) {
@@ -321,20 +322,27 @@ export function planHtml(r, focusKey, unfocus, cross, view = 'portals') {
   return parts.join('');
 }
 
+// a step's number, a tick once its links are done
+const stepNo = (st, done) => (st.links.every((e) => done.has(e.id)) ? '<b class="lp-n ok">✓</b>' : `<b class="lp-n">${st.n}</b>`);
+
 // the order: a row per step, with ↑↓ to move it
-function stepsHtml(r, focusKey) {
+function stepsHtml(r, focusKey, done) {
   const { steps, manual } = r.order;
   const parts = [];
-  if (steps.length) parts.push('<button type="button" class="lp-unpin lp-start">▶ Начать линковку</button>');
+  const nDone = r.links.filter((e) => done.has(e.id)).length;
+  if (steps.length) {
+    parts.push('<div class="lp-run">' + `<button type="button" class="lp-unpin lp-start">▶ ${nDone ? 'Продолжить' : 'Начать'} линковку</button>` +
+      (nDone ? `<button type="button" class="lp-unpin lp-reprog" title="Снять все отметки">Сбросить ${nDone}/${r.links.length}</button>` : '') + '</div>');
+  }
   steps.forEach((st, i) => {
     const p = st.portal;
     const meta = [`→ ${esc(st.links.map((e) => nameOf(e.to)).join(', '))}`];
     if (st.fields.length) meta.push(`+${plural(st.fields.length, 'поле', 'поля', 'полей')}`);
     if (i) meta.push(`${fmtLen(st.dist)} от шага ${i}`);
     let badTxt = st.bad ? `<span class="lp-alt lp-bad">под полем шага ${st.bad.by} — отсюда уже не кинуть</span>` : '';
-    if (st.lost.length) badTxt += `<span class="lp-alt lp-bad">не образуется ${plural(st.lost.length, 'поле', 'поля', 'полей')}: линк закрывает несколько с одной стороны</span>`;
+    if (st.lost.length) badTxt += `<span class="lp-alt lp-bad">здесь линк закроет сразу ${st.lost.length + 1} поля с одной стороны, а образуется только одно (большее) — поставьте этот шаг раньше</span>`;
     parts.push(`<div class="lm-item lp-step${p.key === focusKey ? ' on' : ''}${st.bad || st.lost.length ? ' bad' : ''}">` +
-      `<button type="button" class="lm-row" data-p="${esc(p.key)}"><span class="lm-name"><b class="lp-n">${st.n}</b>${esc(nameOf(p))}</span>` +
+      `<button type="button" class="lm-row" data-p="${esc(p.key)}" data-step="1"><span class="lm-name">${stepNo(st, done)}${esc(nameOf(p))}</span>` +
       `<span class="lm-meta lp-meta">${meta.join(' · ')}${badTxt}</span></button>` +
       `<span class="lp-move"><button type="button" data-mv="${i}" data-d="-1" title="Раньше"${i ? '' : ' disabled'}>↑</button>` +
       `<button type="button" data-mv="${i}" data-d="1" title="Позже"${i < steps.length - 1 ? '' : ' disabled'}>↓</button></span></div>`);
@@ -408,14 +416,30 @@ export function planArrows(r, map, into, pane, onFlip) {
     const a = map.latLngToContainerPoint([e.from.lat, e.from.lng]), b = map.latLngToContainerPoint([e.to.lat, e.to.lng]);
     const d = a.distanceTo(b);
     if (d < 24) continue; // too short on screen to carry an arrow
-    // the geodesic's first stretch gives the way it leaves
-    const path = geodesicPath([[e.from.lat, e.from.lng], [e.to.lat, e.to.lng]]);
-    const p1 = map.latLngToContainerPoint(path[Math.min(1, path.length - 1)]);
-    const dir = (p1.equals(a) ? b : p1).subtract(a);
-    const len = Math.hypot(dir.x, dir.y) || 1;
-    const at = d >= HEAD_PX * 2.5
-      ? map.containerPointToLatLng(a.add(dir.multiplyBy(HEAD_PX / len)))
-      : midpoint([e.from.lat, e.from.lng], [e.to.lat, e.to.lng]);
+    // HEAD_PX along the drawn geodesic (not its tangent: a long link curves
+    // away from a straight line on screen), pointing the way it runs there
+    const pts = geodesicPath([[e.from.lat, e.from.lng], [e.to.lat, e.to.lng]]).map((q) => map.latLngToContainerPoint(q));
+    const want = d >= HEAD_PX * 2.5 ? HEAD_PX : null;
+    let at = midpoint([e.from.lat, e.from.lng], [e.to.lat, e.to.lng]);
+    let dir = b.subtract(a);
+    if (want) {
+      let walked = 0;
+      for (let k = 1; k < pts.length; k++) {
+        const seg = pts[k].subtract(pts[k - 1]), sl = Math.hypot(seg.x, seg.y);
+        if (!sl) continue;
+        dir = seg;
+        if (walked + sl >= want) {
+          at = map.containerPointToLatLng(pts[k - 1].add(seg.multiplyBy((want - walked) / sl)));
+          break;
+        }
+        walked += sl;
+      }
+    } else {
+      // midway: the way the curve runs at its middle
+      const m = map.latLngToContainerPoint(at);
+      const k = pts.findIndex((q) => q.distanceTo(a) >= m.distanceTo(a));
+      if (k > 0) dir = pts[k].subtract(pts[k - 1]);
+    }
     const deg = (Math.atan2(dir.y, dir.x) * 180) / Math.PI;
     const stroke = e.pin ? 'stroke="#ff2d2d" stroke-width="2.5"' : 'stroke="#000" stroke-width="1.5"';
     L.marker(at, {

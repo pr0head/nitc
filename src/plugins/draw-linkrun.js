@@ -7,7 +7,9 @@
 // Progress comes by itself: a plan link seen on the map (either way round:
 // it stands, whoever threw it) or in COMM (link_create) is done; a link
 // destroyed in COMM is undone. A link the map can't show (a far zoom, a cut)
-// can be ticked by hand — a tap on its row — and "Готово" ticks the step.
+// can be ticked by hand — a tap on its row (again: unticked) — and "Готово"
+// ticks the step ("Снять отметки" unticks it); progress can be reset whole.
+// Each step brings the map to its portal, at a zoom showing every portal.
 // When the step's links are all done the plate moves on to the next step
 // not done. Since it is all read from the map, the sky with the same plan
 // sees the same progress, no talk needed.
@@ -20,6 +22,7 @@
 // other faction.
 import L from 'leaflet';
 import { bus } from '../state/bus.js';
+import { MAP } from '../config.js';
 import { me } from '../state/me.js';
 import { plans } from './plans.js';
 import { keyOf } from './draw-snap.js';
@@ -44,6 +47,14 @@ const linkId = (a, b) => { const ka = keyOf(a), kb = keyOf(b); return ka < kb ? 
 function loadDone() {
   try { return JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch { return {}; }
 }
+// the done links of the plan on screen (for the steps list), and their reset
+export const doneLinks = () => new Set(loadDone()[plans.active()?.id] || []);
+export function resetDone() {
+  const all = loadDone();
+  delete all[plans.active()?.id];
+  try { localStorage.setItem(KEY, JSON.stringify(all)); } catch {}
+  bus.emit('linkRunReset');
+}
 
 // { map, engine, ov, container, onOpenSky } → { start(plan, i), stop, update(plan, blocked), active }
 // blocked: ids of plan links a map link crosses
@@ -62,6 +73,7 @@ export function createRun({ map, engine, ov, container, onOpenSky }) {
     const all = loadDone();
     if (done.size) all[planId] = [...done]; else delete all[planId];
     try { localStorage.setItem(KEY, JSON.stringify(all)); } catch {}
+    bus.emit('linkRunProgress'); // the steps list ticks along
   }
   function adopt() {
     const id = plans.active()?.id || null;
@@ -92,6 +104,11 @@ export function createRun({ map, engine, ov, container, onOpenSky }) {
     for (const f of d.fields) if (f.v.length === 3) { see(f.v[0], f.v[1]); see(f.v[1], f.v[2]); see(f.v[2], f.v[0]); }
     return got;
   }
+  // progress reset (here or from the steps list): back to the first step
+  bus.on('linkRunReset', () => {
+    done = new Set(); planId = plans.active()?.id || null;
+    if (on) go(0);
+  });
   // COMM: a plan link made or destroyed
   bus.on('commEvents', (evs) => {
     if (!on || !lp) return;
@@ -113,7 +130,7 @@ export function createRun({ map, engine, ov, container, onOpenSky }) {
     const st = steps()[idx];
     if (st && stepDone(st)) {
       const n = nextOpen(idx);
-      if (n >= 0) idx = n;
+      if (n >= 0 && n !== idx) { go(n); return; }
     }
     paint();
   }
@@ -158,10 +175,11 @@ export function createRun({ map, engine, ov, container, onOpenSky }) {
       `<span class="lr-name">${finished ? 'План построен' : esc(nameOf(p))}</span>` +
       `<span class="lr-count">${nDone}/${allLinks}</span>` +
       '<button type="button" class="lr-x" title="Закончить">×</button></div>' +
-      (finished ? '' : `<div class="lr-links">${rows}</div><div class="lr-meta">${meta.join(' · ')}</div>`) +
+      (finished ? `<div class="lr-fin">Шаг ${st.n}/${s.length} · ${esc(nameOf(p))}<button type="button" class="lr-reset">Сбросить прогресс</button></div>` : '') +
+      `<div class="lr-links">${rows}</div><div class="lr-meta">${meta.join(' · ')}</div>` +
       (warn.length && !finished ? `<ul class="lr-warn">${warn.map((w) => `<li>${w}</li>`).join('')}</ul>` : '') +
       '<div class="lr-nav"><button type="button" class="lr-prev" title="Предыдущий шаг"' + (idx ? '' : ' disabled') + '>‹</button>' +
-      `<button type="button" class="lr-done"${finished || stepDone(st) ? ' disabled' : ''}>Готово</button>` +
+      (stepDone(st) ? '<button type="button" class="lr-undo">Снять отметки</button>' : '<button type="button" class="lr-done">Готово</button>') +
       '<button type="button" class="lr-next" title="Следующий шаг"' + (idx < s.length - 1 ? '' : ' disabled') + '>›</button></div>';
     place();
     paintMap(st);
@@ -188,10 +206,11 @@ export function createRun({ map, engine, ov, container, onOpenSky }) {
     L.circleMarker([st.portal.lat, st.portal.lng], { radius: 16, color: RING, weight: 4, fill: false, interactive: false, className: 'dx-pulse', ...ov }).addTo(layer);
   }
 
+  // to step i, the map on its portal at a zoom with every portal shown
   function go(i) {
     idx = i; paint();
     const p = steps()[idx]?.portal;
-    if (p && !map.getBounds().pad(-0.15).contains([p.lat, p.lng])) map.panTo([p.lat, p.lng]);
+    if (p) map.setView([p.lat, p.lng], Math.max(map.getZoom(), MAP.minPortalZoom));
   }
 
   bar.addEventListener('click', (e) => {
@@ -203,14 +222,18 @@ export function createRun({ map, engine, ov, container, onOpenSky }) {
     if (t.closest('.lr-done')) {
       for (const l of steps()[idx].links) done.add(l.id);
       progressed();
-      const p = steps()[idx]?.portal;
-      if (p) map.panTo([p.lat, p.lng]);
       return;
     }
+    if (t.closest('.lr-undo')) {
+      for (const l of steps()[idx].links) done.delete(l.id);
+      keep(); paint();
+      return;
+    }
+    if (t.closest('.lr-reset')) { resetDone(); return; }
     const r = t.closest('.lr-link');
     if (r) {
-      if (done.has(r.dataset.e)) done.delete(r.dataset.e); else done.add(r.dataset.e);
-      progressed();
+      if (done.has(r.dataset.e)) { done.delete(r.dataset.e); keep(); paint(); }
+      else { done.add(r.dataset.e); progressed(); }
     }
   });
 
