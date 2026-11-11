@@ -14,6 +14,10 @@
 // not done. Since it is all read from the map, the sky with the same plan
 // sees the same progress, no talk needed.
 //
+// The plate folds to its head line (step, portal, count; a dot when there
+// is a warning) so it leaves a phone's map alone; a tap unfolds it. Folded
+// or not is remembered.
+//
 // Done links are kept per plan (localStorage 'nitc.lp.done': {planId: [link
 // ids]}), so a reload or a plan switch keeps the count.
 //
@@ -61,6 +65,8 @@ export function resetDone() {
 export function createRun({ map, engine, ov, container, onOpenSky }) {
   const layer = L.layerGroup();
   let on = false, lp = null, idx = 0, blocked = new Set();
+  let folded = false;
+  try { folded = localStorage.getItem('nitc.lp.fold') === '1'; } catch {}
   let done = new Set(), planId = null;
 
   const bar = document.createElement('div');
@@ -174,13 +180,17 @@ export function createRun({ map, engine, ov, container, onOpenSky }) {
       `<div class="lr-head"><b class="lr-n">${finished ? '✓' : `${st.n}/${s.length}`}</b>` +
       `<span class="lr-name">${finished ? 'План построен' : esc(nameOf(p))}</span>` +
       `<span class="lr-count">${nDone}/${allLinks}</span>` +
+      (folded && warn.length && !finished ? '<b class="lr-dot" title="Есть предупреждения"></b>' : '') +
+      `<button type="button" class="lr-fold" title="${folded ? 'Развернуть' : 'Свернуть'}">${folded ? '▴' : '▾'}</button>` +
       '<button type="button" class="lr-x" title="Закончить">×</button></div>' +
+      (folded ? '' :
       (finished ? `<div class="lr-fin">Шаг ${st.n}/${s.length} · ${esc(nameOf(p))}<button type="button" class="lr-reset">Сбросить прогресс</button></div>` : '') +
       `<div class="lr-links">${rows}</div><div class="lr-meta">${meta.join(' · ')}</div>` +
       (warn.length && !finished ? `<ul class="lr-warn">${warn.map((w) => `<li>${w}</li>`).join('')}</ul>` : '') +
       '<div class="lr-nav"><button type="button" class="lr-prev" title="Предыдущий шаг"' + (idx ? '' : ' disabled') + '>‹</button>' +
       (stepDone(st) ? '<button type="button" class="lr-undo">Снять отметки</button>' : '<button type="button" class="lr-done">Готово</button>') +
-      '<button type="button" class="lr-next" title="Следующий шаг"' + (idx < s.length - 1 ? '' : ' disabled') + '>›</button></div>';
+      '<button type="button" class="lr-next" title="Следующий шаг"' + (idx < s.length - 1 ? '' : ' disabled') + '>›</button></div>');
+    bar.classList.toggle('folded', folded);
     place();
     paintMap(st);
   }
@@ -216,6 +226,12 @@ export function createRun({ map, engine, ov, container, onOpenSky }) {
   bar.addEventListener('click', (e) => {
     const t = e.target;
     if (t.closest('.lr-x')) { stop(); return; }
+    // the fold button, or anywhere on a folded plate's head: fold/unfold
+    if (t.closest('.lr-fold') || (folded && t.closest('.lr-head'))) {
+      folded = !folded;
+      try { localStorage.setItem('nitc.lp.fold', folded ? '1' : '0'); } catch {}
+      paint(); return;
+    }
     if (t.closest('.lr-sky')) { onOpenSky?.(); return; }
     if (t.closest('.lr-prev')) { go(Math.max(0, idx - 1)); return; }
     if (t.closest('.lr-next')) { go(Math.min(steps().length - 1, idx + 1)); return; }

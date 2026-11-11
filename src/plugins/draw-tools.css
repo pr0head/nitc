@@ -250,3 +250,7 @@
   border-radius: 6px; color: var(--text); font: 600 12px var(--font); cursor: pointer;
 }
 .lr-undo { flex: 1; }
+.lr-fold { background: none; border: 0; color: var(--muted); font-size: 16px; line-height: 1; cursor: pointer; min-width: 32px; min-height: 32px; }
+.lr-fold:hover { color: #fff; }
+.lr-bar.folded .lr-head { border-bottom: 0; cursor: pointer; }
+.lr-dot { width: 8px; height: 8px; border-radius: 50%; background: #ffb86b; }
