@@ -21,12 +21,19 @@
 
 /* the handle is a transparent grab area (its size set in draw-tools.js), the
    dot is drawn in its middle */
-.draw-handle { background: none; border: 0; cursor: move; }
+.draw-handle { background: none; border: 0; cursor: move; -webkit-touch-callout: none; user-select: none; }
 .draw-handle::after {
   content: ''; position: absolute; left: 50%; top: 50%; width: 12px; height: 12px; margin: -8px 0 0 -8px;
   background: #fff; border: 2px solid #ff2d2d; border-radius: 50%;
 }
 .draw-handle.draw-clone { cursor: copy; }
+/* edit: how many shapes stand on the portal, by its dot; grabbed all at once
+   (Ctrl/Cmd or a long press), the dot swells */
+.draw-handle.draw-group::after { transform: scale(1.4); background: #ff2d2d; }
+.draw-handle b {
+  position: absolute; left: 50%; top: 50%; margin: -19px 0 0 5px; pointer-events: none;
+  font: 700 10px var(--font); color: #fff; text-shadow: 0 0 2px #000, 0 0 2px #000, 0 0 2px #000;
+}
 .draw-handle.draw-clone::after { border-color: var(--accent); }
 .draw-vtx { background: #fff; border: 2px solid #000; border-radius: 50%; pointer-events: none; }
 /* a free vertex (zoomed out, away from any portal): a hollow ring until it

@@ -18,6 +18,11 @@
 // copy's new vertex takes the nearest free portal past that vertex whose new
 // edges cross nothing of the plan.
 //
+// Edit shows one handle per portal, with a count where several shapes stand
+// on it. A drag moves one vertex (the latest shape's); with Ctrl (Cmd) held,
+// or after a long press on a touch screen, it moves them all — a hub goes to
+// another portal with all its fields in one drag.
+//
 // Clicking the active tool's icon again switches it off and discards whatever
 // was half-drawn. Free-form polygons can't be drawn, but imported ones render
 // and edit — the format is unchanged.
@@ -59,6 +64,7 @@ import { createSnap, keyOf, LOOSE } from './draw-snap.js';
 // than a mouse
 const touch = matchMedia('(pointer: coarse)');
 const handleSize = () => (touch.matches ? 44 : 20);
+const HOLD_MS = 450; // a press this long on a shared handle grabs every vertex on it
 
 const DRAW = ['line', 'triangle'];
 const DEF_COLOR = '#a24ac3'; // as IITC DrawTools: shapes without a colour of their own get it too
@@ -123,7 +129,6 @@ export function mountDrawTools(container, engine, menu) {
   let flashT = 0;
   const HINTS = {
     clone: ['Клон', 'Нажмите вершину — копия фигуры встанет на ближайший свободный портал за ней'],
-    edit: ['Правка', 'Перетащите вершину — она встанет на ближайший портал'],
     delete: ['Удаление', 'Нажмите на фигуру, чтобы удалить её'],
   };
   function hint() {
@@ -134,6 +139,11 @@ export function mountDrawTools(container, engine, menu) {
       title = `${tool === 'line' ? 'Линия' : 'Треугольник'} · вершина ${pts.length + 1} из ${need}`;
       text = 'Нажмите на карту — точка встанет на ближайший портал' +
         (pts.length ? '. Повторное нажатие на вершину убирает её' : '');
+    } else if (tool === 'edit') {
+      title = 'Правка';
+      text = 'Перетащите вершину — она встанет на ближайший портал. ' + (touch.matches
+        ? 'Удержание, затем перетаскивание — все фигуры на этом портале'
+        : `С ${/Mac|iP/.test(navigator.platform) ? 'Cmd' : 'Ctrl'} — все фигуры на этом портале`);
     } else if (HINTS[tool]) [title, text] = HINTS[tool];
     hintEl.hidden = !active || !title;
     if (hintEl.hidden) return;
@@ -433,39 +443,70 @@ export function mountDrawTools(container, engine, menu) {
 
   function renderHandles() {
     editLayer.clearLayers();
-    const cloning = tool === 'clone';
+    const hs = handleSize();
+    if (tool === 'clone') {
+      model.forEach((s, si) => s.latLngs.forEach((v, vi) => {
+        L.marker([v.lat, v.lng], {
+          keyboard: false, pane: PANE,
+          icon: L.divIcon({ className: 'draw-handle draw-clone', iconSize: [hs, hs] }),
+        }).on('click', (ev) => { L.DomEvent.stop(ev); cloneAt(si, vi); }).addTo(editLayer);
+      }));
+      return;
+    }
+    // one handle per point, over the vertices of every shape standing there
+    const groups = new Map();
     model.forEach((s, si) => s.latLngs.forEach((v, vi) => {
-      const h = L.marker([v.lat, v.lng], {
-        draggable: !cloning, keyboard: false, pane: PANE,
-        icon: L.divIcon({ className: 'draw-handle' + (cloning ? ' draw-clone' : ''), iconSize: [handleSize(), handleSize()] }),
+      const k = keyOf(v);
+      if (!groups.has(k)) groups.set(k, []);
+      groups.get(k).push({ s, si, vi });
+    }));
+    for (const g of groups.values()) {
+      const v0 = g[0].s.latLngs[g[0].vi];
+      const h = L.marker([v0.lat, v0.lng], {
+        draggable: true, keyboard: false, pane: PANE,
+        icon: L.divIcon({ className: 'draw-handle', iconSize: [hs, hs], html: g.length > 1 ? `<b>${g.length}</b>` : '' }),
       });
-      if (cloning) {
-        h.on('click', (ev) => { L.DomEvent.stop(ev); cloneAt(si, vi); });
-        h.addTo(editLayer);
-        return;
-      }
+      // what the drag moves: the whole group (Ctrl/Cmd — Leaflet keeps Shift
+      // for its box zoom and won't drag with it — or a long press),
+      // else the latest shape's vertex alone — the one on top before
+      let moved = g.slice(-1), hold = 0;
+      const arm = () => { moved = g; h.getElement()?.classList.add('draw-group'); navigator.vibrate?.(30); };
+      h.on('add', () => {
+        const el = h.getElement();
+        el.addEventListener('contextmenu', (e) => e.preventDefault()); // no menu on a long press
+        el.addEventListener('pointerdown', (e) => {
+          moved = g.slice(-1); el.classList.remove('draw-group'); clearTimeout(hold);
+          if (g.length < 2) return;
+          if (e.pointerType === 'mouse') { if (e.ctrlKey || e.metaKey) arm(); }
+          else hold = setTimeout(arm, HOLD_MS);
+        });
+        const off = () => clearTimeout(hold);
+        el.addEventListener('pointerup', off); el.addEventListener('pointercancel', off);
+      });
+      const set = (p) => { for (const { s, vi } of moved) s.latLngs[vi] = { lat: p.lat, lng: p.lng }; };
+      h.on('dragstart', () => clearTimeout(hold)); // moved before the press was long: one vertex
       h.on('drag', (ev) => {
-        const p = ev.target.getLatLng();
-        s.latLngs[vi] = { lat: p.lat, lng: p.lng };
-        shapeLayers[si]?.setLatLngs(geodesicPath(s.latLngs.map((q) => [q.lat, q.lng]), s.type === 'polygon'));
+        set(ev.target.getLatLng());
+        for (const { s, si } of moved) shapeLayers[si]?.setLatLngs(geodesicPath(s.latLngs.map((q) => [q.lat, q.lng]), s.type === 'polygon'));
         crosses.update(model);
       });
-      // the drop lands on the nearest portal the shape doesn't use (zoomed
-      // out: on a dot within reach, or stays free); with none on screen the
-      // vertex goes back where it was
-      let from = null;
-      h.on('dragstart', () => { from = { ...s.latLngs[vi] }; });
+      // the drop lands on the nearest portal none of the moved shapes uses
+      // otherwise (zoomed out: on a dot within reach, or stays free); with
+      // none on screen the vertices go back where they were
+      const from = { lat: v0.lat, lng: v0.lng };
       h.on('dragend', (ev) => {
         const at = ev.target.getLatLng();
-        const r = snap.place(at, new Set(s.latLngs.filter((_, i) => i !== vi).map(keyOf)), handleSize() / 2);
+        const taken = new Set();
+        for (const { s, vi } of moved) s.latLngs.forEach((q, i) => { if (i !== vi) taken.add(keyOf(q)); });
+        const r = snap.place(at, taken, hs / 2);
         loose.delete(keyOf(from));
-        if (r.err) { s.latLngs[vi] = from; flash(r.err); }
-        else if (r.free) { s.latLngs[vi] = { lat: at.lat, lng: at.lng }; loose.add(keyOf(at)); flash(LOOSE, false); }
-        else s.latLngs[vi] = { lat: r.p.lat, lng: r.p.lng };
+        if (r.err) { set(from); flash(r.err); }
+        else if (r.free) { set(at); loose.add(keyOf(at)); flash(LOOSE, false); }
+        else set(r.p);
         save(); redraw(); // redraw, not just save: the area label is a separate marker
       });
       h.addTo(editLayer);
-    }));
+    }
   }
 
   // ---- clone ----
