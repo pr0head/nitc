@@ -157,8 +157,36 @@ export function adaptAgent(j) {
       id: m.id, title: m.title || m.id, desc: m.description || '',
       metric: m.metric_code || null, tier: m.earned_tier | 0,
       thresholds: (m.thresholds || []).map(num),
+      special: (m.thresholds || []).length <= 1 || !m.metric_code,
     })),
   };
+}
+
+// Agent medals (/agents/{id}/medals): the profile's medal plus tier dates,
+// server-side progress and artwork. A medal with one tier or no metric is a
+// one-off award (Alpha Tester, events) rather than a tiered medal. Artwork is
+// taken only as an https URL; anything else falls back to our own pictures.
+export function adaptMedals(j) {
+  const url = (u) => (typeof u === 'string' && /^https:\/\//.test(u) ? u : null);
+  return (j?.medals || []).map((m) => {
+    const thresholds = (m.thresholds || []).map(num);
+    const p = m.progress;
+    return {
+      id: m.id, title: m.title || m.id, desc: m.description || '',
+      metric: m.metric_code || null, tier: m.earned_tier | 0, thresholds,
+      special: thresholds.length <= 1 || !m.metric_code,
+      img: url(m.image_url),
+      availability: m.availability || 'active',
+      levelEligible: m.level_eligible !== false,
+      awards: (m.awards || []).map((a) => ({
+        tier: a.tier | 0, at: Date.parse(a.awarded_at), archive: a.origin === 'historical_import',
+      })).filter((a) => a.tier > 0 && !Number.isNaN(a.at)).sort((a, b) => a.tier - b.tier),
+      progress: p && p.value != null ? {
+        value: num(p.value), unit: p.unit || 'count',
+        next: p.next_threshold == null ? null : num(p.next_threshold),
+      } : null,
+    };
+  });
 }
 
 // value null ≠ 0: not tracked or unknown; coverage says how much history it holds
@@ -199,5 +227,26 @@ export function adaptRating(j) {
     self: j?.self ? { ...agent(j.self), status: j.self.status || 'not_tracked' } : null,
     asOf: j?.snapshot?.as_of ? Date.parse(j.snapshot.as_of) : null,
     next: j?.next_cursor ?? null,
+  };
+}
+
+// /territorial-rating: a territory's MU balance (always MU, whatever the kind)
+// and top-10. MU stays null while mu_status is unavailable — no computed
+// balance, never 0:0. A row's rank is null when the agent has no place.
+export function adaptTerritory(j) {
+  const b = j?.balance || {};
+  const n = (v) => (v == null ? null : num(v));
+  const muOk = j?.mu_status === 'ready' || j?.mu_status === 'partial';
+  const row = (e) => ({
+    id: e.user_id, nick: e.nickname || '', faction: factionByApi(e.faction).id, rank: n(e.rank), score: n(e.value),
+  });
+  return {
+    status: j?.status || 'unavailable',
+    muStatus: j?.mu_status || 'unavailable',
+    asOf: j?.as_of ? Date.parse(j.as_of) : null,
+    name: b.name || '',
+    mu: { res: muOk ? n(b.blue_mu) : null, enl: muOk ? n(b.green_mu) : null },
+    rows: (j?.top || []).map(row),
+    self: j?.self ? row(j.self) : null,
   };
 }

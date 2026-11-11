@@ -1,5 +1,7 @@
 /* Agent card (inside the list modal). */
-.ag-box { width: 420px; max-height: min(82vh, 760px); }
+/* .lm-box too: the list modal's own sizes come later in the cascade; tall
+   enough for the medals with their details line on most screens */
+.lm-box.ag-box { width: 420px; max-height: min(90vh, 760px); }
 .ag { padding: 4px 6px 8px; }
 .ag-head { display: flex; align-items: center; gap: 12px; margin: 4px 0 6px; }
 .ag-lvl {
@@ -31,27 +33,31 @@
 .ag-pane[hidden] { display: none; }
 .ag .seg { margin-top: 12px; }
 /* medals: a picture per medal, coloured for the tier (medal-art.js) */
-.ag-medals { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px 4px; }
+.ag-medals { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px 4px; }
 .ag-medal {
   display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 0;
   padding: 4px 2px; border-radius: 6px; cursor: pointer;
 }
 .ag-medal:hover, .ag-medal.sel { background: var(--input); }
 .ag-medal .md-art { width: 48px; height: auto; display: block; }
+/* the server's square pictures: the hexagon as wide as in our own set */
+.ag-medal img.md-art { width: 54px; margin: -3px 0; }
 .ag-medal span {
   max-width: 100%; font-size: 10px; line-height: 1.2; text-align: center;
   overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
 }
 .ag-medal.ag-none .md-art { filter: grayscale(1) brightness(0.8); opacity: 0.35; }
 .ag-medal.ag-none span { color: var(--dim); }
-/* taller than the other list windows: the medals with their details line
-   fit whole on most screens */
-.lm-box:has(.ag-medals) { max-height: min(88vh, 700px); }
-.ag-mdet { margin-top: 6px; font-size: 12px; line-height: 1.35; min-height: 2.7em; color: var(--muted); }
+/* the way to the next tier, under the name, as in the game */
+.ag-prog { display: block; width: 84%; height: 3px; margin-top: auto; border-radius: 2px; background: var(--line); overflow: hidden; }
+.ag-prog b { display: block; height: 100%; background: var(--accent); }
+.ag-mdet { margin-top: 6px; font-size: 12px; line-height: 1.35; min-height: 2.7em; color: var(--muted); white-space: pre-line; }
 .ag-mdet.ag-hint { color: var(--dim); }
 .ag-credit { margin-top: 8px; font-size: 10px; color: var(--dim); }
 .ag-credit a { color: inherit; }
 @media (max-width: 400px) { .ag-medals { grid-template-columns: repeat(4, 1fr); } }
+/* the card at its full width: six in a row, one row less */
+@media (min-width: 460px) { .ag-medals { grid-template-columns: repeat(6, 1fr); } }
 
 .ag-stats { display: flex; flex-direction: column; }
 .ag-st { display: flex; justify-content: space-between; gap: 10px; padding: 2px 0; font-size: 12px; }

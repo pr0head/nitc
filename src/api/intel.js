@@ -58,3 +58,15 @@ export function getRating(kind, cursor, signal) {
   if (cursor) q.set('cursor', cursor);
   return api.get(`/v1/intel/rating?${q}`, { signal });
 }
+
+// GET /v1/intel/agents/{id}/medals — the agent's medals with tier dates,
+// progress and artwork URLs (no-store)
+export function getAgentMedals(id, signal) {
+  return api.get(`/v1/intel/agents/${encodeURIComponent(id)}/medals`, { signal });
+}
+
+// GET /v1/intel/territorial-rating?kind=fields|links&territory=… — a
+// territory's MU balance, top-10 and own place (no-store)
+export function getTerritorial(kind, territory, signal) {
+  return api.get(`/v1/intel/territorial-rating?${new URLSearchParams({ kind, territory })}`, { signal });
+}

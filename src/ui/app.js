@@ -81,7 +81,7 @@ export function showApp(root) {
   mountPortalCard(engine);
   mountTracker(app, engine); // before COMM: it lives on COMM's events
   mountComm(app, engine, menu);
-  mountScore(app, menu);
+  mountScore(app, menu, () => engine.map.getCenter());
   mountAgentCard();
   keys.start(); // own key set: card line, key highlight/filter, inventory
   showMe(root.querySelector('.who__me'));
