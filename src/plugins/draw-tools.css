@@ -140,6 +140,8 @@
 .lp-arrow { display: flex; align-items: center; justify-content: center; background: none; border: 0; pointer-events: none; }
 .lp-arrow.leaflet-interactive { pointer-events: auto; cursor: pointer; }
 .lp-arrow svg { display: block; }
+/* over the link it sits on, wherever the map is panned (see .map-lbl) */
+.leaflet-marker-icon.lp-arrow { z-index: 1000000000 !important; }
 /* the picked portal's links, under its row: each can be turned */
 .lm-item:has(.lp-links) { flex-wrap: wrap; }
 .lp-links { flex-basis: 100%; padding: 0 6px 8px 9px; }

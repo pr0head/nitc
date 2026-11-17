@@ -446,6 +446,11 @@ body:has(.pd:not([hidden])) .toolbar { right: calc(10px + min(350px, 100vw - 20p
    zero-size marker, the text centred on it (a span may turn it), over a crisp
    dark outline like the field overlay's canvas labels */
 .map-lbl { width: 0; height: 0; font: 700 11px var(--font); pointer-events: none; }
+/* Leaflet stacks a marker by its layer y (z-index = y) while the lines of the
+   same pane sit in an SVG at z-index 200 (leaflet.css): a label near the top,
+   or anywhere once the map is panned north, sank under its own line. Over
+   any y instead. */
+.leaflet-marker-icon.map-lbl { z-index: 1000000000 !important; }
 .map-lbl span {
   position: absolute; transform: translate(-50%, -50%); white-space: nowrap;
   -webkit-text-stroke: 3.5px rgba(0, 0, 0, 0.85); paint-order: stroke fill;
