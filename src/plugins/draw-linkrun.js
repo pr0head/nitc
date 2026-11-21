@@ -5,10 +5,10 @@
 // marks its links still to throw, the next portal, and every link done.
 //
 // Progress comes by itself: a plan link seen on the map (either way round:
-// it stands, whoever threw it) or in COMM (link_create) is done; a link
-// destroyed in COMM is undone. A link the map can't show (a far zoom, a cut)
-// can be ticked by hand — a tap on its row (again: unticked) — and "Готово"
-// ticks the step ("Снять отметки" unticks it); progress can be reset whole.
+// it stands, whoever threw it) or in COMM since the run started (link_create)
+// is done; a link destroyed in COMM is undone. Never by hand: "Обновить"
+// loads the map and COMM now instead of at the next tick; progress can be
+// reset whole.
 // Each step brings the map to its portal, at a zoom showing every portal.
 // When the step's links are all done the plate moves on to the next step
 // not done. Since it is all read from the map, the sky with the same plan
@@ -68,6 +68,8 @@ export function createRun({ map, engine, ov, container, onOpenSky, onFlip }) {
   let folded = false;
   try { folded = localStorage.getItem('nitc.lp.fold') === '1'; } catch {}
   let done = new Set(), planId = null;
+  let reloading = false;
+  let startedAt = 0; // COMM counts from here (see 'commEvents')
 
   const bar = document.createElement('div');
   bar.className = 'lr-bar'; bar.hidden = true;
@@ -116,11 +118,15 @@ export function createRun({ map, engine, ov, container, onOpenSky, onFlip }) {
     if (on) go(0);
   });
   // COMM: a plan link made or destroyed
+  // Only events since the run started: a new area brings COMM's history, and
+  // an old link_create may be of a link long gone (a neutralized portal drops
+  // its links without a destroy line). What stands from before, the map shows.
   bus.on('commEvents', (evs) => {
     if (!on || !lp) return;
     const ids = new Set(lp.links.map((e) => e.id));
     let got = false;
     for (const ev of evs) {
+      if (ev.time < startedAt) continue;
       if ((ev.kind !== 'link_create' && ev.kind !== 'link_destroy') || ev.portals.length < 2) continue;
       const id = linkId(ev.portals[0], ev.portals[1]);
       if (!ids.has(id)) continue;
@@ -153,9 +159,9 @@ export function createRun({ map, engine, ov, container, onOpenSky, onFlip }) {
 
     const rows = st.links.map((e) => {
       const ok = done.has(e.id);
-      return `<button type="button" class="lr-link${ok ? ' ok' : ''}" data-e="${esc(e.id)}" title="${ok ? 'отмечен сделанным — нажмите, чтобы снять' : 'нажмите, чтобы отметить вручную'}">` +
+      return `<div class="lr-link${ok ? ' ok' : ''}">` +
         `<span class="lr-tick">${ok ? '✓' : '○'}</span><span class="lr-to">→ ${esc(nameOf(e.to))}</span>` +
-        `<span class="lr-len">${fmtLen(e.len)}</span></button>`;
+        `<span class="lr-len">${fmtLen(e.len)}</span></div>`;
     }).join('');
 
     const meta = [];
@@ -195,7 +201,7 @@ export function createRun({ map, engine, ov, container, onOpenSky, onFlip }) {
       `<div class="lr-links">${rows}</div><div class="lr-meta">${meta.join(' · ')}</div>` +
       (warn.length && !finished ? `<ul class="lr-warn">${warn.map((w) => `<li>${w}</li>`).join('')}</ul>` : '') +
       '<div class="lr-nav"><button type="button" class="lr-prev" title="Предыдущий шаг"' + (idx ? '' : ' disabled') + '>‹</button>' +
-      (stepDone(st) ? '<button type="button" class="lr-undo">Снять отметки</button>' : '<button type="button" class="lr-done">Готово</button>') +
+      `<button type="button" class="lr-reload" title="Загрузить карту и COMM сейчас"${reloading ? ' disabled' : ''}>${reloading ? 'Обновляется…' : '↻ Обновить'}</button>` +
       '<button type="button" class="lr-next" title="Следующий шаг"' + (idx < s.length - 1 ? '' : ' disabled') + '>›</button></div>');
     bar.classList.toggle('folded', folded);
     place();
@@ -244,27 +250,18 @@ export function createRun({ map, engine, ov, container, onOpenSky, onFlip }) {
     if (t.closest('.lr-sky')) { onOpenSky?.(); return; }
     if (t.closest('.lr-prev')) { go(Math.max(0, idx - 1)); return; }
     if (t.closest('.lr-next')) { go(Math.min(steps().length - 1, idx + 1)); return; }
-    if (t.closest('.lr-done')) {
-      for (const l of steps()[idx].links) done.add(l.id);
-      progressed();
-      return;
-    }
-    if (t.closest('.lr-undo')) {
-      for (const l of steps()[idx].links) done.delete(l.id);
-      keep(); paint();
+    if (t.closest('.lr-reload')) {
+      reloading = true; paint();
+      engine.load(); bus.emit('commPoll');
+      setTimeout(() => { if (reloading) { reloading = false; paint(); } }, 15000); // no answer: let it be pressed again
       return;
     }
     if (t.closest('.lr-reset')) { resetDone(); return; }
-    const r = t.closest('.lr-link');
-    if (r) {
-      if (done.has(r.dataset.e)) { done.delete(r.dataset.e); keep(); paint(); }
-      else { done.add(r.dataset.e); progressed(); }
-    }
   });
 
   function start(plan, i) {
     lp = plan; adopt();
-    if (!on) { on = true; layer.addTo(map); backOpen(stop); }
+    if (!on) { on = true; startedAt = Date.now(); layer.addTo(map); backOpen(stop); }
     bar.hidden = false;
     fromMap(); keep();
     const n = i != null ? i : nextOpen(0);
@@ -280,6 +277,7 @@ export function createRun({ map, engine, ov, container, onOpenSky, onFlip }) {
   function update(plan, blockedIds) {
     if (!on) return;
     lp = plan; blocked = blockedIds || new Set();
+    reloading = false; // a recount follows each map load
     adopt();
     if (fromMap()) { progressed(); return; }
     paint();

@@ -213,9 +213,8 @@
 .lr-links { padding: 4px 6px; }
 .lr-link {
   display: flex; align-items: center; gap: 8px; width: 100%; min-height: 36px; padding: 0 5px; background: none; border: 0;
-  border-radius: 6px; color: var(--text); font: inherit; text-align: left; cursor: pointer;
+  border-radius: 6px; color: var(--text);
 }
-.lr-link:hover { background: var(--hover); }
 .lr-tick { width: 16px; color: var(--muted); font-weight: 700; text-align: center; }
 .lr-link.ok .lr-tick { color: #3fca4a; }
 .lr-link.ok .lr-to { color: var(--muted); text-decoration: line-through; }
@@ -231,7 +230,7 @@
   font: 600 13px var(--font); cursor: pointer;
 }
 .lr-prev, .lr-next { min-width: 48px; font-size: 18px !important; }
-.lr-done { flex: 1; color: var(--accent) !important; }
+.lr-reload { flex: 1; color: var(--accent) !important; }
 .lr-nav button:disabled { opacity: 0.35; cursor: default; }
 .lr-nav button:not(:disabled):hover { border-color: var(--accent); }
 /* an upright phone: a bottom sheet across the width */
@@ -251,7 +250,6 @@
   margin-left: auto; min-height: 32px; padding: 4px 9px; background: var(--input); border: 1px solid var(--line);
   border-radius: 6px; color: var(--text); font: 600 12px var(--font); cursor: pointer;
 }
-.lr-undo { flex: 1; }
 .lr-fold { background: none; border: 0; color: var(--muted); font-size: 16px; line-height: 1; cursor: pointer; min-width: 32px; min-height: 32px; }
 .lr-fold:hover { color: #fff; }
 .lr-bar.folded .lr-head { border-bottom: 0; cursor: pointer; }

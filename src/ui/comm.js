@@ -183,6 +183,7 @@ export function mountComm(container, engine, menu) {
   });
   setInterval(() => { if (!document.hidden) poll(); }, MAP.refreshMs);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) poll(); });
+  bus.on('commPoll', poll); // the link run's "Обновить": now, not at the next tick
 
   // ---- render ----
   const visible = () => items.filter((ev) => {
