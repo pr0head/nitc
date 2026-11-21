@@ -1,12 +1,12 @@
-// Highlight rules (IITC/SBG-style). Each rule is a predicate over an adapted
+// Highlight rules (IITC-style). Each rule is a predicate over an adapted
 // portal from the bulk /map response — no per-portal fetch. Only data the map
 // endpoint already carries is usable here: level, resonator_count, current/max
 // XM — plus the local favorites list and the own keys set.
 import { favorites } from '../state/favorites.js';
 import { keys } from '../state/keys.js';
 
-export const TOP_COLOR = '#b061ff'; // purple, like the SBG top arc
-export const BOT_COLOR = '#ff9f40'; // orange, like the SBG bottom arc
+export const TOP_COLOR = '#b061ff'; // purple: the top arc
+export const BOT_COLOR = '#ff9f40'; // orange: the bottom arc
 
 // Per-resonator energy is not in bulk, so "weak" is judged on the portal's
 // total XM instead: at/below this fraction of max.
