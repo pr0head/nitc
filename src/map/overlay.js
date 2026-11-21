@@ -35,7 +35,7 @@ const HighlightLayer = L.Layer.extend({
     pane.style.pointerEvents = 'none';
   },
 
-  // marks: [{lat,lng,r,top,bot,text}] · labels: [{ring:[[lat,lng]×3],text,color}]
+  // marks: [{lat,lng,r,top,bot,text} | {lat,lng,r,half,outline,weight}] · labels: [{ring:[[lat,lng]×3],text,color}]
   setData(marks, labels) {
     this._marks = marks || [];
     this._labels = labels || [];
@@ -114,12 +114,22 @@ const HighlightLayer = L.Layer.extend({
     for (const m of this._marks) {
       const p = this._map.latLngToLayerPoint([m.lat, m.lng]);
       if (!b.contains(p)) continue; // cull off-screen
+      if (m.half) { this._half(ctx, m, p); continue; }
       const r = m.r + 2.5;
       ctx.lineWidth = 2.6;
       if (m.top) { ctx.strokeStyle = m.top; ctx.beginPath(); ctx.arc(p.x, p.y, r, Math.PI, 2 * Math.PI); ctx.stroke(); }
       if (m.bot) { ctx.strokeStyle = m.bot; ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI); ctx.stroke(); }
       if (m.text) this._label(ctx, m.text, p.x, p.y, '#fff', 11);
     }
+  },
+
+  // a two-colour own-data marker: the lower half-disc in `half`, then the full
+  // outline again so the dot keeps its border
+  _half(ctx, m, p) {
+    ctx.fillStyle = m.half;
+    ctx.beginPath(); ctx.arc(p.x, p.y, m.r, 0, Math.PI); ctx.closePath(); ctx.fill();
+    ctx.lineWidth = m.weight; ctx.strokeStyle = m.outline;
+    ctx.beginPath(); ctx.arc(p.x, p.y, m.r, 0, 2 * Math.PI); ctx.stroke();
   },
 
   _drawLabels(ctx) {

@@ -8,7 +8,7 @@ import { getMap } from '../api/intel.js';
 import { adaptMap } from '../adapter/model.js';
 import { makeGroups, render, fieldVisible, fcol, ll } from './render.js';
 import { createHighlightLayer } from './overlay.js';
-import { styleFn } from './highlight.js';
+import { styleFn, userMarkFn, userCandidates } from './highlight.js';
 import { ringArea, fmtArea } from './geo.js';
 import { prefs } from '../state/prefs.js';
 import { bus, tools } from '../state/bus.js';
@@ -117,7 +117,7 @@ export function createMap(el, { onStatus, onPortalClick, onUnauthorized, statusE
   function paint() {
     if (!lastData) return;
     const f = prefs.filters, h = prefs.highlight;
-    const marks = render(groups, lastData, { onPortalClick, selectedId, filters: f, style: styleFn(h) });
+    const marks = render(groups, lastData, { onPortalClick, selectedId, filters: f, style: styleFn(h), userMarks: userMarks(h) });
     // field label: area and/or the server's MU (null = not computed yet → "?",
     // never 0 and never our own estimate)
     const labels = [];
@@ -133,6 +133,28 @@ export function createMap(el, { onStatus, onPortalClick, onUnauthorized, statusE
       }
     }
     highlight.setData(marks, labels);
+  }
+
+  // No portals in the response (zoomed out): favorites/keys still mark their
+  // portals from local data, inside the loaded area only. With portals, the
+  // regular arcs do it.
+  function userMarks(h) {
+    const d = lastData;
+    if (!(d.lod ? d.lod.has_portals === false : d.portalsOmitted) || !d.bbox) return null;
+    const mark = userMarkFn(h);
+    if (!mark) return null;
+    const { w, s, e, n } = d.bbox, m = 0.01 * Math.max(n - s, 1e-6); // a small margin
+    // longitudes compared as an eastward span from w (works for w > e and for
+    // unwrapped bounds past ±180)
+    const span = e - w >= 360 ? 360 : (((e - w) % 360) + 360) % 360;
+    const inLng = (x) => span + 2 * m >= 360 || (((x - w + m) % 360) + 360) % 360 <= span + 2 * m;
+    const out = [];
+    for (const c of userCandidates(h)) {
+      if (!ll(c) || c.lat < s - m || c.lat > n + m || !inLng(c.lng)) continue;
+      const st = mark(c.id);
+      if (st.top || st.bot) out.push({ ...c, ...st });
+    }
+    return out;
   }
 
   function bboxOf() {

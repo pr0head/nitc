@@ -10,6 +10,9 @@
 //   lines on the projected map
 //   corner portals (link/field ends with no portal data) → smaller dot under
 //                   the portals; portals row only (no level to filter by)
+//   own-data markers (no portals sent: favorites/keys highlight) → corner-sized
+//                   dot in the highlight colours, above the corners; no filter
+//                   applies (no level or faction known), no text
 import L from 'leaflet';
 import { FACTION } from '../config.js';
 import { geodesicPath } from './geo.js';
@@ -51,8 +54,9 @@ const path = (l) => (l.geo ||= geodesicPath([[l.a.lat, l.a.lng], [l.b.lat, l.b.l
 const okField = (fd) => fd.v.length >= 3 && fd.v.every(ll);
 
 // style(p) → { top, bot, text } from the highlight rules, or null.
-// Returns the overlay marks (arcs/text) for portals that got a style.
-export function render(groups, data, { onPortalClick, selectedId, filters: f, style } = {}) {
+// Returns the overlay marks (arcs/text) for portals that got a style, plus the
+// lower halves of two-colour own-data markers.
+export function render(groups, data, { onPortalClick, selectedId, filters: f, style, userMarks } = {}) {
   groups.fields.clearLayers();
   groups.links.clearLayers();
   groups.portals.clearLayers();
@@ -91,7 +95,20 @@ export function render(groups, data, { onPortalClick, selectedId, filters: f, st
       .addTo(groups.portals);
   }
 
+  // own-data markers ({id,name,lat,lng,top,bot}): corner-sized, in the slot
+  // colours; two colours → the overlay paints the lower half
   const marks = [];
+  for (const u of userMarks || []) {
+    if (!ll(u)) continue;
+    const sel = u.id === selectedId;
+    const color = sel ? SEL_COL : '#000', weight = sel ? 2.5 : 1;
+    L.circleMarker([u.lat, u.lng], {
+      radius: CORNER_R, color, weight, fillColor: u.top || u.bot, fillOpacity: 1,
+    }).on('click', () => onPortalClick?.({ id: u.id, name: u.name, lat: u.lat, lng: u.lng }))
+      .addTo(groups.portals);
+    if (u.top && u.bot) marks.push({ lat: u.lat, lng: u.lng, r: CORNER_R, half: u.bot, outline: color, weight });
+  }
+
   for (const p of data.portals) {
     if (!ll(p) || !portalVisible(p, f)) continue;
     const st = style ? style(p) : null;

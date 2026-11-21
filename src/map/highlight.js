@@ -60,3 +60,34 @@ export function styleFn(h) {
     text: tx ? tx(p) : '',
   });
 }
+
+// Zoomed out, the map sends no portals — only the rules over the player's own
+// data (favorites, keys) still know where their portals are. Config →
+// mark(id) → { top, bot }, or null when neither slot holds such a rule.
+const USER_RULES = ['favorite', 'keys'];
+export function userMarkFn(h) {
+  const tf = USER_RULES.includes(h.top) ? arcFn(h.top) : null;
+  const bf = USER_RULES.includes(h.bottom) ? arcFn(h.bottom) : null;
+  if (!tf && !bf) return null;
+  return (id) => ({
+    top: tf && tf({ id }) ? TOP_COLOR : null,
+    bot: bf && bf({ id }) ? BOT_COLOR : null,
+  });
+}
+
+// The portals those rules can mark, from local data: [{id, name, lat, lng}],
+// one per id. Keys are listed only when a slot holds the keys rule.
+export function userCandidates(h) {
+  const out = new Map();
+  if (h.top === 'favorite' || h.bottom === 'favorite') {
+    for (const f of favorites.list()) {
+      if (favorites.highlighted(f.id)) out.set(String(f.id), { id: f.id, name: f.title || '', lat: +f.lat, lng: +f.lng });
+    }
+  }
+  if (h.top === 'keys' || h.bottom === 'keys') {
+    for (const k of keys.list()) {
+      if (k.qty > 0 && !out.has(String(k.id))) out.set(String(k.id), { id: k.id, name: k.name, lat: k.lat, lng: k.lng });
+    }
+  }
+  return [...out.values()];
+}
